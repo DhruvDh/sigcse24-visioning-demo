@@ -1,10 +1,22 @@
-import { setup } from 'xstate';
+import { setup } from "xstate";
 
 type DemoContext = {
   name: string;
   responses: {
     teachLLMs: string;
     syntheticStudents: string;
+  };
+  mergeSort?: {
+    currentStep: number;
+    selectedResponses: Array<{
+      persona: string;
+      response: string;
+    }>;
+    milestones: Array<{
+      id: number;
+      text: string;
+      isComplete: boolean;
+    }>;
   };
 };
 
@@ -14,7 +26,17 @@ type DemoEvent =
   | { type: "SKIP_NAME" }
   | { type: "SUBMIT_TEACHING_RESPONSE"; response: string }
   | { type: "SUBMIT_SYNTHETIC_RESPONSE"; response: string }
-  | { type: "NEXT" };
+  | { type: "CONTINUE" }
+  | {
+      type: "SELECT_RESPONSE";
+      persona: string;
+      response: string;
+      milestoneId: number;
+    }
+  | {
+      type: "UPDATE_OPTIONS";
+      newOptions: Array<{ persona: string; response: string }>;
+    };
 
 export const demoMachine = setup({
   types: {
@@ -22,14 +44,47 @@ export const demoMachine = setup({
     events: {} as DemoEvent,
   },
   actions: {
-    setName: ({ context }, params: { name: string }) => {
-      context.name = params.name;
+    setName: ({ context }, event: { name: string }) => {
+      context.name = event.name;
     },
-    setTeachingResponse: ({ context }, params: { response: string }) => {
-      context.responses.teachLLMs = params.response;
+    setTeachingResponse: ({ context }, event: { response: string }) => {
+      context.responses.teachLLMs = event.response;
     },
-    setSyntheticResponse: ({ context }, params: { response: string }) => {
-      context.responses.syntheticStudents = params.response;
+    setSyntheticResponse: ({ context }, event: { response: string }) => {
+      context.responses.syntheticStudents = event.response;
+    },
+    initializeMergeSort: ({ context }) => {
+      context.mergeSort = {
+        currentStep: 0,
+        selectedResponses: [],
+        milestones: [
+          { id: 1, text: "Understanding the divide step", isComplete: false },
+          { id: 2, text: "Understanding the merge step", isComplete: false },
+          { id: 3, text: "Grasping recursive nature", isComplete: false },
+          { id: 4, text: "Analyzing time complexity", isComplete: false },
+        ],
+      };
+    },
+    addSelectedResponse: (
+      { context },
+      event: { persona: string; response: string }
+    ) => {
+      if (context.mergeSort) {
+        context.mergeSort.selectedResponses.push({
+          persona: event.persona,
+          response: event.response,
+        });
+      }
+    },
+    updateMilestones: ({ context }, event: { milestoneId: number }) => {
+      if (context.mergeSort) {
+        const milestone = context.mergeSort.milestones.find(
+          (m) => m.id === event.milestoneId
+        );
+        if (milestone) {
+          milestone.isComplete = true;
+        }
+      }
     },
   },
 }).createMachine({
@@ -52,21 +107,21 @@ export const demoMachine = setup({
       on: {
         SUBMIT_NAME: {
           target: "teachingQuestion",
-          actions: {
-            type: 'setName',
-            params: ({ event }) => ({
-              name: event.name
-            })
-          },
+          actions: [
+            {
+              type: "setName",
+              params: ({ event }) => ({ name: event.name }),
+            },
+          ],
         },
         SKIP_NAME: {
           target: "teachingQuestion",
-          actions: {
-            type: 'setName',
-            params: () => ({
-              name: "Anon"
-            })
-          },
+          actions: [
+            {
+              type: "setName",
+              params: () => ({ name: "Anon" }),
+            },
+          ],
         },
       },
     },
@@ -74,35 +129,64 @@ export const demoMachine = setup({
       on: {
         SUBMIT_TEACHING_RESPONSE: {
           target: "thankYouTeaching",
-          actions: {
-            type: 'setTeachingResponse',
-            params: ({ event }) => ({
-              response: event.response
-            })
-          },
+          actions: [
+            {
+              type: "setTeachingResponse",
+              params: ({ event }) => ({ response: event.response }),
+            },
+          ],
         },
       },
     },
     thankYouTeaching: {
       after: {
-        1500: "syntheticQuestion"
+        1500: "syntheticQuestion",
       },
     },
     syntheticQuestion: {
       on: {
         SUBMIT_SYNTHETIC_RESPONSE: {
           target: "complete",
-          actions: {
-            type: 'setSyntheticResponse',
-            params: ({ event }) => ({
-              response: event.response
-            })
-          },
+          actions: [
+            {
+              type: "setSyntheticResponse",
+              params: ({ event }) => ({ response: event.response }),
+            },
+          ],
         },
       },
     },
     complete: {
-      type: "final",
+      on: {
+        CONTINUE: {
+          target: "mergeSort",
+          actions: [{ type: "initializeMergeSort" }],
+        },
+      },
+    },
+    mergeSort: {
+      on: {
+        SELECT_RESPONSE: {
+          actions: [
+            {
+              type: "addSelectedResponse",
+              params: ({ event }) => ({
+                persona: event.persona,
+                response: event.response,
+              }),
+            },
+            {
+              type: "updateMilestones",
+              params: ({ event }) => ({
+                milestoneId: event.milestoneId,
+              }),
+            },
+          ],
+        },
+        UPDATE_OPTIONS: {
+          // Handle updating available response options
+        },
+      },
     },
   },
 });

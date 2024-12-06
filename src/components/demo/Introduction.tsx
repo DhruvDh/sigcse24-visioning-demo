@@ -1,32 +1,10 @@
-import { motion } from "framer-motion";
 import { useState } from "react";
 import { H1, BodyLarge } from "../ui/Typography";
 import { useDemoStore } from "../../lib/store/demoStore";
 import { clsx } from "clsx";
+import { MotionDiv, containerAnimation, itemAnimation } from "../ui/Motion";
 
-const containerAnimation = {
-  initial: { opacity: 0 },
-  animate: { opacity: 1 },
-  exit: { opacity: 0 },
-};
-
-const itemAnimation = {
-  initial: { opacity: 0, y: 20 },
-  animate: { opacity: 1, y: 0 },
-};
-
-type MotionDivProps = {
-  children: React.ReactNode;
-  className?: string;
-  initial?: { opacity?: number; y?: number };
-  animate?: { opacity?: number; y?: number };
-  exit?: { opacity?: number };
-  transition?: { delay?: number; duration?: number };
-};
-
-const MotionDiv = motion.div as React.FC<MotionDivProps>;
-
-const ArrowIcon = () => (
+export const ArrowIcon = () => (
   <svg
     className="ml-2 inline-block"
     width="24"
