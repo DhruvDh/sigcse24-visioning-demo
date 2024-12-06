@@ -19,6 +19,7 @@
     "zustand": "^5.0.2"
   },
   "devDependencies": {
+    "@cloudflare/next-on-pages": "^1.13.6",
     "@tailwindcss/typography": "^0.5.15",
     "@types/node": "^20.17.9",
     "@types/react": "^19.0.0",
@@ -31,6 +32,7 @@
     "prettier-plugin-tailwindcss": "^0.6.9",
     "tailwind-merge": "^2.5.5",
     "tailwindcss": "^3.4.16",
-    "typescript": "^5.7.2"
+    "typescript": "^5.7.2",
+    "vercel": "^39.1.3"
   }
 }
