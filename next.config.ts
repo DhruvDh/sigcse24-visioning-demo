@@ -1,9 +1,9 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  output: "export",
+  output: "standalone",
   reactStrictMode: true,
-  swcMinify: true,
+  distDir: "out",
 };
 
 export default nextConfig;
