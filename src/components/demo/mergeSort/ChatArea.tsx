@@ -306,7 +306,7 @@ export const ChatArea: FC = () => {
             className="flex-1 overflow-y-auto p-6"
           >
             <AnimatePresence>
-              {messages.map((message) => (
+              {messages.map((message, index) => (
                 <MotionDiv
                   key={message.id}
                   initial={{ opacity: 0, y: 20 }}
@@ -317,36 +317,43 @@ export const ChatArea: FC = () => {
                     message.role === "assistant" ? "ml-0" : "ml-auto"
                   )}
                 >
-                  {message.persona && (
-                    <H4
-                      className={clsx(
-                        "mb-1 text-[10px] uppercase tracking-wide",
-                        message.role === "assistant"
-                          ? "text-primary/70"
-                          : "text-primary/70 text-right"
-                      )}
-                    >
-                      {message.persona}
-                    </H4>
-                  )}
-                  <div
-                    className={clsx(
-                      "rounded-lg",
-                      message.role === "assistant"
-                        ? "bg-gray-100"
-                        : "bg-primary/10"
-                    )}
-                  >
-                    <MarkdownContainer
-                      content={message.content}
-                      className={clsx(
-                        "p-3",
-                        "prose-p:mb-2 last:prose-p:mb-0",
-                        "prose-headings:mb-2",
-                        "prose-p:text-sm",
-                        "prose-headings:text-base"
-                      )}
-                    />
+                  <div className={clsx(
+                    "flex flex-col gap-1",
+                    message.role === "assistant" ? "items-start" : "items-end"
+                  )}>
+                    <span className={clsx(
+                      "text-xs font-sans text-muted/70",
+                      message.role === "assistant" ? "ml-2" : "mr-2"
+                    )}>
+                      {message.role === "assistant" ? "Tutor" : message.persona || "You"}
+                    </span>
+                    
+                    <div className={clsx(
+                      "max-w-[85%] rounded-2xl px-6 py-4",
+                      message.role === "assistant" 
+                        ? "bg-slate-50 border border-slate-200" 
+                        : "bg-[#C56646]",
+                      index === messages.length - 1 && "animate-fade-in"
+                    )}>
+                      <MarkdownContainer 
+                        content={message.content}
+                        variant="message"
+                        className={clsx(
+                          message.role === "assistant" 
+                            ? "prose-slate prose-p:font-serif" 
+                            : [
+                                "prose-invert",
+                                "prose-p:font-serif",
+                                "!text-white",
+                                "[&_p]:text-white",
+                                "[&_*]:text-white",
+                                "prose-code:bg-white/10"
+                              ],
+                          "whitespace-pre-wrap",
+                          "prose-p:mb-4 prose-p:last:mb-0"
+                        )}
+                      />
+                    </div>
                   </div>
                 </MotionDiv>
               ))}

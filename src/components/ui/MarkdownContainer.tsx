@@ -6,12 +6,14 @@ interface MarkdownContainerProps {
   content: string
   isStreaming?: boolean
   className?: string
+  variant?: 'default' | 'message'
 }
 
 export function MarkdownContainer({
   content,
   isStreaming = false,
-  className
+  className,
+  variant = 'default'
 }: MarkdownContainerProps) {
   const containerRef = useRef<HTMLDivElement>(null)
   const [html, setHtml] = useState('')
@@ -37,13 +39,14 @@ export function MarkdownContainer({
     <div
       ref={containerRef}
       className={clsx(
-        // Base styles
-        'prose prose-slate max-w-none',
-        // Container styling
-        'p-8 rounded-2xl',
-        'bg-gradient-to-br from-gray-50 to-white',
-        'shadow-sm',
-        // Font families
+        'prose max-w-none',
+        // Only apply default styling if not in message variant
+        variant === 'default' && [
+          'p-8 rounded-2xl',
+          'bg-gradient-to-br from-gray-50 to-white',
+          'shadow-sm',
+        ],
+        // Base typography
         'prose-headings:font-serif',
         'prose-p:font-sans',
         'prose-pre:font-mono',
