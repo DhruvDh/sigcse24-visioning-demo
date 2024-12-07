@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "next dev --turbopack",
+    "dev": "next dev",
     "build": "next build",
     "start": "next start",
     "lint": "next lint"
@@ -12,13 +12,17 @@
     "@xstate/react": "^5.0.0",
     "framer-motion": "^11.13.1",
     "next": "15.0.4",
-    "react": "^19.0.0",
+    "react": "^18.3.1",
+    "react-compiler-runtime": "19.0.0-beta-df7b47d-20241124",
     "react-dom": "^18.3.1",
     "react-wrap-balancer": "^1.1.1",
     "xstate": "^5.19.0",
     "zustand": "^5.0.2"
   },
   "devDependencies": {
+    "@babel/preset-env": "^7.26.0",
+    "@babel/preset-react": "^7.26.3",
+    "@babel/preset-typescript": "^7.26.0",
     "@cloudflare/next-on-pages": "^1.13.6",
     "@tailwindcss/typography": "^0.5.15",
     "@types/node": "^20.17.9",
