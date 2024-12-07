@@ -22,7 +22,14 @@ type DemoContext = {
 
 type DemoEvent =
   | { type: "BEGIN" }
-  | { type: "SUBMIT_NAME"; name: string }
+  | { 
+      type: "SUBMIT_NAME"; 
+      name: string;
+      responses?: {
+        teachLLMs: string;
+        syntheticStudents: string;
+      };
+    }
   | { type: "SKIP_NAME" }
   | { type: "SUBMIT_TEACHING_RESPONSE"; response: string }
   | { type: "SUBMIT_SYNTHETIC_RESPONSE"; response: string }
@@ -86,6 +93,45 @@ export const demoMachine = setup({
         }
       }
     },
+    sendResponsesToEndpoint: async ({ context }) => {
+      const isEmptyResponses = 
+        !context.responses.teachLLMs.trim() && 
+        !context.responses.syntheticStudents.trim();
+      
+      if (isEmptyResponses || context.name === "Anon") {
+        return;
+      }
+
+      try {
+        const response = await fetch('https://near-duck-52.deno.dev/responses', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            name: context.name,
+            responses: context.responses,
+            timestamp: Date.now()
+          })
+        });
+
+        if (!response.ok) {
+          console.error('Failed to store responses:', await response.text());
+        }
+        
+        if (context.name !== "Anon") {
+          const storageData = {
+            name: context.name,
+            responses: context.responses,
+            timestamp: Date.now()
+          };
+          localStorage.setItem('previousResponses', JSON.stringify(storageData));
+          console.log('Stored in localStorage:', storageData);
+        }
+      } catch (error) {
+        console.error('Error sending responses:', error);
+      }
+    },
   },
 }).createMachine({
   id: "demo",
@@ -101,6 +147,30 @@ export const demoMachine = setup({
     welcome: {
       on: {
         BEGIN: "nameInput",
+        SUBMIT_NAME: {
+          target: "quickContinue",
+          actions: [
+            {
+              type: "setName",
+              params: ({ event }) => ({ name: event.name }),
+            },
+          ],
+        },
+      },
+    },
+    quickContinue: {
+      entry: [
+        ({ context, event }) => {
+          if (event.type === "SUBMIT_NAME" && event.responses) {
+            context.responses = event.responses;
+          }
+        },
+      ],
+      after: {
+        100: {
+          target: "mergeSort",
+          actions: [{ type: "initializeMergeSort" }]
+        },
       },
     },
     nameInput: {
@@ -152,6 +222,7 @@ export const demoMachine = setup({
               type: "setSyntheticResponse",
               params: ({ event }) => ({ response: event.response }),
             },
+            { type: "sendResponsesToEndpoint" }
           ],
         },
       },

@@ -1,0 +1,3 @@
+[submodule "edge-functions"]
+	path = edge-functions
+	url = https://github.com/DhruvDh/sigcse24-visioning-deno-edge.git

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { H1, BodyLarge } from "../ui/Typography";
 import { useDemoStore } from "../../lib/store/demoStore";
 import { clsx } from "clsx";
@@ -36,7 +36,33 @@ export const Introduction = () => {
   const [name, setName] = useState("");
   const [teachingResponse, setTeachingResponse] = useState("");
   const [syntheticResponse, setSyntheticResponse] = useState("");
+  const [previousSession, setPreviousSession] = useState<{
+    name: string;
+    responses: {
+      teachLLMs: string;
+      syntheticStudents: string;
+    };
+    timestamp: number;
+  } | null>(null);
   const { state, send } = useDemoStore();
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  useEffect(() => {
+    const stored = localStorage.getItem('previousResponses');
+    if (stored) {
+      try {
+        const parsed = JSON.parse(stored);
+        if (Date.now() - parsed.timestamp < 24 * 60 * 60 * 1000) {
+          setPreviousSession(parsed);
+        } else {
+          localStorage.removeItem('previousResponses');
+        }
+      } catch (e) {
+        console.error('Error parsing stored responses:', e);
+        localStorage.removeItem('previousResponses');
+      }
+    }
+  }, []);
 
   const handleKeyPress = (e: React.KeyboardEvent) => {
     if (e.key === "Enter" && !e.shiftKey) {
@@ -149,6 +175,34 @@ export const Introduction = () => {
       );
     }
 
+    if (state.matches("welcome")) {
+      return previousSession && (
+        <div className="fixed bottom-8 left-8 animate-fade-in">
+          <button
+            onClick={() => {
+              send({ 
+                type: "SUBMIT_NAME", 
+                name: previousSession.name,
+                responses: previousSession.responses
+              });
+            }}
+            className={clsx(
+              "px-6 py-5 rounded-lg",
+              "font-sans text-base",
+              "bg-gray-100 text-gray-700",
+              "hover:bg-gray-200",
+              "transition-colors duration-200",
+              "focus:outline-none focus:ring-2 focus:ring-gray-300",
+              "flex items-center gap-2"
+            )}
+          >
+            <span className="opacity-60">Continue as</span>
+            <span className="font-medium">{previousSession.name}</span>
+          </button>
+        </div>
+      );
+    }
+
     return null;
   };
 
@@ -176,6 +230,7 @@ export const Introduction = () => {
   };
 
   const handleSubmitSynthetic = () => {
+    setIsSubmitting(true);
     send({
       type: "SUBMIT_SYNTHETIC_RESPONSE",
       response: syntheticResponse,
@@ -238,10 +293,12 @@ export const Introduction = () => {
           {...itemAnimation}
           transition={{ delay: 0.6, duration: 0.6 }}
         >
-          <BodyLarge className="text-foreground max-w-3xl mb-16">
-            We encourage and invite interpretations of two questions for the
-            future.
-          </BodyLarge>
+          {(state.matches("welcome") || state.matches("nameInput")) && (
+            <BodyLarge className="text-foreground max-w-3xl mb-16">
+              We encourage and invite interpretations of two questions for the
+              future. Click &ldquo;Let&apos;s go!&rdquo; to begin.
+            </BodyLarge>
+          )}
         </MotionDiv>
 
         <MotionDiv
@@ -250,20 +307,51 @@ export const Introduction = () => {
           transition={{ delay: 0.8, duration: 0.6 }}
         >
           {state.matches("welcome") ? (
-            <button
-              onClick={handleBegin}
-              className={clsx(
-                "px-10 py-5 rounded-lg",
-                "font-sans font-medium text-xl",
-                "bg-primary text-primary-foreground",
-                "transition-colors duration-200",
-                "focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2",
-                "flex items-center"
+            <div className="flex items-center gap-4">
+              {previousSession && (
+                <MotionDiv
+                  initial={{ opacity: 0, x: -20 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  transition={{ delay: 1.0, duration: 0.4 }}
+                >
+                  <button
+                    onClick={() => {
+                      send({ 
+                        type: "SUBMIT_NAME", 
+                        name: previousSession.name,
+                        responses: previousSession.responses
+                      });
+                    }}
+                    className={clsx(
+                      "px-6 py-5 rounded-lg",
+                      "font-sans text-base",
+                      "bg-gray-100 text-gray-700",
+                      "hover:bg-gray-200",
+                      "transition-colors duration-200",
+                      "focus:outline-none focus:ring-2 focus:ring-gray-300",
+                      "flex items-center gap-2"
+                    )}
+                  >
+                    <span className="opacity-60">Continue as</span>
+                    <span className="font-medium">{previousSession.name}</span>
+                  </button>
+                </MotionDiv>
               )}
-            >
-              Begin Demo
-              <ArrowIcon />
-            </button>
+              <button
+                onClick={handleBegin}
+                className={clsx(
+                  "px-10 py-5 rounded-lg",
+                  "font-sans font-medium text-xl",
+                  "bg-primary text-primary-foreground",
+                  "transition-colors duration-200",
+                  "focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2",
+                  "flex items-center"
+                )}
+              >
+                Let&apos;s go!
+                <ArrowIcon />
+              </button>
+            </div>
           ) : (
             <div className="w-full">
               {renderPromptSection()}
@@ -285,17 +373,28 @@ export const Introduction = () => {
                 </button>
                 <button
                   onClick={handleContinue}
+                  disabled={isSubmitting}
                   className={clsx(
                     "px-10 py-5 rounded-lg",
                     "font-sans font-medium text-xl",
                     "bg-primary text-primary-foreground",
                     "transition-colors duration-200",
                     "focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2",
-                    "flex items-center"
+                    "flex items-center",
+                    isSubmitting && "opacity-50 cursor-not-allowed"
                   )}
                 >
-                  Continue
-                  <ArrowIcon />
+                  {isSubmitting ? (
+                    <>
+                      Saving...
+                      <span className="ml-2 inline-block animate-spin">⟳</span>
+                    </>
+                  ) : (
+                    <>
+                      Continue
+                      <ArrowIcon />
+                    </>
+                  )}
                 </button>
               </div>
             </div>

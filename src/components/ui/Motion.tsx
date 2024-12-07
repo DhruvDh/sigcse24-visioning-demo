@@ -3,9 +3,9 @@ import { motion } from "framer-motion";
 export type MotionDivProps = {
   children: React.ReactNode;
   className?: string;
-  initial?: { opacity?: number; y?: number };
-  animate?: { opacity?: number; y?: number };
-  exit?: { opacity?: number };
+  initial?: { opacity?: number; y?: number; x?: number };
+  animate?: { opacity?: number; y?: number; x?: number };
+  exit?: { opacity?: number; y?: number; x?: number };
   transition?: { delay?: number; duration?: number };
 };
 
