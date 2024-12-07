@@ -1,4 +1,6 @@
 import { setup, assign, assertEvent } from "xstate";
+import { syntheticStudentActor } from '../actors/syntheticStudentActor';
+import { SYNTHETIC_STUDENT_SYSTEM_MESSAGE } from '../store/demoStore';
 
 type Milestone = {
   id: string;
@@ -24,6 +26,11 @@ type DemoContext = {
     messages: Message[];
     streamingMessage?: string;
     isStreaming: boolean;
+    isLoadingSynthetic: boolean;
+    syntheticResponses?: Array<{
+      name: string;
+      response: string;
+    }>;
   };
 };
 
@@ -68,7 +75,7 @@ type Message = {
   persona?: string;
 };
 
-const mergeSortMilestones: Milestone[] = [
+export const mergeSortMilestones: Milestone[] = [
   {
     id: "inefficiency_discovery",
     text: "Understanding Sorting Inefficiency",
@@ -103,6 +110,41 @@ const mergeSortMilestones: Milestone[] = [
   },
 ];
 
+const getRandomLevel = (levels: number[]) => 
+  levels[Math.floor(Math.random() * levels.length)];
+
+const generateStudentTraits = () => {
+  // Define possible levels for each trait
+  const correctnessLevels = [1, 3];
+  const concisenessLevels = [1, 2, 3];
+  const typingPersonalityLevels = [1, 2, 3];
+  const attentionLevels = [1, 2, 3];
+  const comprehensionLevels = [2, 3]; // Only 2 and 3 for comprehension
+
+  // Generate random levels
+  const traits = {
+    correctness: getRandomLevel(correctnessLevels),
+    conciseness: getRandomLevel(concisenessLevels),
+    typingPersonality: getRandomLevel(typingPersonalityLevels),
+    attention: getRandomLevel(attentionLevels),
+    comprehension: getRandomLevel(comprehensionLevels),
+  };
+
+  // Randomly select one trait to be dominant
+  const allTraits = ['correctness', 'conciseness', 'typingPersonality', 'attention', 'comprehension'] as const;
+  const dominantTrait = allTraits[Math.floor(Math.random() * allTraits.length)];
+
+  return { ...traits, dominantTrait };
+};
+
+const formatTraits = (traits: ReturnType<typeof generateStudentTraits>) => `
+- correctness: Level ${traits.correctness}
+- conciseness: Level ${traits.conciseness}
+- typingPersonality: Level ${traits.typingPersonality}
+- attention: Level ${traits.attention}
+- comprehension: Level ${traits.comprehension}
+- dominantTrait: ${traits.dominantTrait}`;
+
 export const demoMachine = setup({
   types: {
     context: {} as DemoContext,
@@ -111,7 +153,9 @@ export const demoMachine = setup({
   },
   guards: {},
   delays: {},
-  actors: {},
+  actors: {
+    syntheticStudentActor,
+  },
   actions: {
     setName: assign(({ event }) => {
       assertEvent(event, "SUBMIT_NAME");
@@ -142,8 +186,46 @@ export const demoMachine = setup({
         milestones: mergeSortMilestones,
         messages: [],
         isStreaming: false,
-        streamingMessage: ""
+        streamingMessage: "",
+        isLoadingSynthetic: false,
+        syntheticResponses: undefined,
       })
+    }),
+    startLoadingSynthetic: assign({
+      mergeSort: ({ context }) => {
+        const currentMergeSort = context.mergeSort ?? {
+          currentStep: 0,
+          selectedResponses: [],
+          milestones: mergeSortMilestones,
+          messages: [],
+          isStreaming: false,
+          streamingMessage: "",
+          isLoadingSynthetic: false,
+        };
+        
+        return {
+          ...currentMergeSort,
+          isLoadingSynthetic: true,
+        };
+      }
+    }),
+    finishLoadingSynthetic: assign({
+      mergeSort: ({ context }) => {
+        const currentMergeSort = context.mergeSort ?? {
+          currentStep: 0,
+          selectedResponses: [],
+          milestones: mergeSortMilestones,
+          messages: [],
+          isStreaming: false,
+          streamingMessage: "",
+          isLoadingSynthetic: false,
+        };
+        
+        return {
+          ...currentMergeSort,
+          isLoadingSynthetic: false,
+        };
+      }
     }),
     sendResponsesToEndpoint: ({ context }) => {
       const isEmptyResponses =
@@ -194,8 +276,11 @@ export const demoMachine = setup({
         milestones: mergeSortMilestones,
         messages: [],
         isStreaming: false,
-        streamingMessage: ""
+        streamingMessage: "",
+        isLoadingSynthetic: false,
       };
+
+      const existingMessages = currentMergeSort.messages ?? [];
 
       if (!currentMergeSort.isStreaming) {
         return {
@@ -206,7 +291,6 @@ export const demoMachine = setup({
         };
       }
 
-      const existingMessages = currentMergeSort.messages;
       const lastMessage = existingMessages[existingMessages.length - 1];
       const newToken = event.messages[event.messages.length - 1]?.content ?? "";
       
@@ -259,7 +343,24 @@ export const demoMachine = setup({
         isStreaming: false,
         streamingMessage: ""
       }
-    }))
+    })),
+    prepareSyntheticStudentMessages: ({ context }) => {
+      const chatMessages = context.mergeSort?.messages ?? [];
+      
+      // Create the initial system message
+      const systemMessage = {
+        role: "system" as const,
+        content: SYNTHETIC_STUDENT_SYSTEM_MESSAGE + "\n\nNOTE: Previous student responses in this conversation were randomly selected from multiple synthetic student options. Do not let those choices influence your response generation.",
+      };
+      
+      // Filter out any system messages from the chat history
+      const chatHistory = chatMessages.filter(msg => msg.role !== "system");
+      
+      return {
+        systemMessage: systemMessage.content,
+        messages: [systemMessage, ...chatHistory]
+      };
+    },
   },
 }).createMachine({
   id: "demo",
@@ -276,7 +377,9 @@ export const demoMachine = setup({
       milestones: mergeSortMilestones,
       messages: [],
       isStreaming: false,
-      streamingMessage: ""
+      streamingMessage: "",
+      isLoadingSynthetic: false,
+      syntheticResponses: undefined,
     }
   },
   states: {
@@ -298,9 +401,10 @@ export const demoMachine = setup({
       },
     },
     quickContinue: {
+      entry: "initializeMergeSort",
       after: {
         100: {
-          target: "mergeSort"
+          target: "mergeSort",
         },
       },
     },
@@ -346,9 +450,12 @@ export const demoMachine = setup({
       },
     },
     mergeSort: {
-      entry: "initializeMergeSort",
-      initial: "idle",
+      initial: "initializing",
       states: {
+        initializing: {
+          entry: "initializeMergeSort",
+          always: "idle"
+        },
         idle: {
           on: {
             START_STREAMING: "streaming",
@@ -364,9 +471,90 @@ export const demoMachine = setup({
               actions: "updateMessages"
             },
             FINISH_STREAMING: {
-              target: "idle",
+              target: "preparingResponses",
               actions: "finishStreaming"
             }
+          }
+        },
+        preparingResponses: {
+          entry: "startLoadingSynthetic",
+          invoke: {
+            id: 'syntheticStudentResponses',
+            src: 'syntheticStudentActor',
+            input: ({ context }) => {
+              const messages = context.mergeSort?.messages ?? [];
+              const lastTutorMessage = messages
+                .filter(msg => msg.role === "assistant")
+                .pop()?.content ?? "";
+
+              // Generate three different sets of traits
+              const traits = [
+                generateStudentTraits(),
+                generateStudentTraits(),
+                generateStudentTraits()
+              ];
+
+              // Create three separate requests
+              const requests = traits.map(trait => ({
+                systemMessage: SYNTHETIC_STUDENT_SYSTEM_MESSAGE,
+                messages: [{
+                  role: "user",
+                  content: `Generate a response as if you are a synthetic student with the following traits:
+
+${formatTraits(trait)}
+
+The question is: ${lastTutorMessage}
+
+Previous conversation:
+${messages.map(msg => `${msg.persona}: ${msg.content}`).join('\n')}
+
+Note: Generate only one response matching these traits. Include a name for the student that matches their traits.`
+                }]
+              }));
+
+              return { requests };
+            },
+            onDone: {
+              target: "idle",
+              actions: [
+                assign({
+                  mergeSort: ({ context, event }) => {
+                    // Ensure we have valid responses
+                    const responses = Array.isArray(event.output) ? event.output : [];
+                    const validResponses = responses
+                      .filter(r => r?.name && r?.response)
+                      .map(r => ({
+                        name: r.name,
+                        response: r.response
+                      }));
+
+                    if (validResponses.length === 0) {
+                      console.error('No valid responses received:', event.output);
+                    }
+
+                    return {
+                      ...context.mergeSort!,
+                      syntheticResponses: validResponses,
+                      isLoadingSynthetic: false,
+                    };
+                  }
+                }),
+              ],
+            },
+            onError: {
+              target: "idle",
+              actions: [
+                ({ event }) => {
+                  console.error('Failed to generate synthetic responses:', event.error);
+                },
+                assign({
+                  mergeSort: ({ context }) => ({
+                    ...context.mergeSort!,
+                    isLoadingSynthetic: false,
+                  }),
+                }),
+              ],
+            },
           }
         }
       },

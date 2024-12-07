@@ -10,15 +10,19 @@ import {
   constructSystemMessage,
   fetchAndCache,
 } from "../../../lib/utils/contentCache";
+import { Spinner } from "../../ui/Spinner";
 
-type MessageRole = "system" | "user" | "assistant";
-
-interface ChatMessage {
+type DemoMessage = {
   id: number;
-  role: MessageRole;
+  role: "system" | "user" | "assistant";
   content: string;
   persona?: string;
-}
+};
+
+type UpdateMessagesEvent = {
+  type: "UPDATE_MESSAGES";
+  messages: DemoMessage[];
+};
 
 interface OnboardingStep {
   id: number;
@@ -143,12 +147,11 @@ export const ChatArea: FC = () => {
       return;
     }
 
-    // First add student message
-    const updatedMessages: ChatMessage[] = [
-      ...messages,
+    const updatedMessages: DemoMessage[] = [
+      ...(messages ?? []),
       {
         id: Date.now(),
-        role: "user" as const,
+        role: "user",
         content,
         persona: "Student"
       }
@@ -157,14 +160,14 @@ export const ChatArea: FC = () => {
     send({
       type: "UPDATE_MESSAGES",
       messages: updatedMessages
-    });
+    } as UpdateMessagesEvent);
 
     // Then send to API
     const systemMessage = constructSystemMessage(
       llmInstructions,
       lessonContent
     );
-    const messageToSend: { role: MessageRole; content: string }[] = [
+    const messageToSend: { role: "system" | "user" | "assistant"; content: string }[] = [
       {
         role: "system",
         content: systemMessage,
@@ -225,6 +228,14 @@ export const ChatArea: FC = () => {
         ? Math.min(prev + 1, onboardingSteps.length)
         : Math.max(prev - 1, 1)
     );
+  };
+
+  const syntheticResponses = state.context.mergeSort?.syntheticResponses;
+  const isLoadingSynthetic = state.context.mergeSort?.isLoadingSynthetic ?? false;
+
+  const handleSyntheticResponse = (response: string) => {
+    if (isTyping) return;
+    handleStudentResponse(response);
   };
 
   return (
@@ -368,7 +379,36 @@ export const ChatArea: FC = () => {
         className="border-t border-gray-200 p-6"
       >
         <div className="grid grid-cols-1 gap-4">
-          {messages.length === 0 && (
+          {isLoadingSynthetic ? (
+            <div className="flex items-center justify-center p-8">
+              <Spinner className="w-8 h-8 text-primary" />
+              <span className="ml-3 text-primary font-medium">
+                Generating student responses...
+              </span>
+            </div>
+          ) : syntheticResponses ? (
+            <div className="grid grid-cols-1 gap-4">
+              {syntheticResponses.map((response, index) => (
+                <button
+                  key={index}
+                  onClick={() => handleSyntheticResponse(response.response)}
+                  className={clsx(
+                    "p-4 rounded-lg text-left",
+                    "border border-gray-200",
+                    "hover:border-primary hover:bg-primary/5",
+                    "transition-colors duration-200"
+                  )}
+                  disabled={isTyping}
+                >
+                  <H4 className="text-primary mb-2">{response.name}</H4>
+                  <MarkdownContainer
+                    content={response.response}
+                    className="prose-p:mb-0 prose-p:text-base"
+                  />
+                </button>
+              ))}
+            </div>
+          ) : messages.length === 0 && (
             <button
               onClick={() => {
                 setShowOnboarding(false);

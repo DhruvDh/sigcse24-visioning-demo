@@ -53,6 +53,20 @@ export const ArrowIcon = () => (
 
 const SadFaceIcon = () => <span className="ml-2 inline-block text-lg">:(</span>;
 
+type SubmitNameEvent = {
+  type: "SUBMIT_NAME";
+  name: string;
+  responses?: {
+    teachLLMs: string;
+    syntheticStudents: string;
+  };
+};
+
+type SubmitResponseEvent = {
+  type: "SUBMIT_TEACHING_RESPONSE" | "SUBMIT_SYNTHETIC_RESPONSE";
+  response: string;
+};
+
 export const Introduction = () => {
   const [name, setName] = useState("");
   const [teachingResponse, setTeachingResponse] = useState("");
@@ -246,14 +260,14 @@ export const Introduction = () => {
     send({
       type: "SUBMIT_NAME",
       name: formattedName || "Anon",
-    });
+    } as SubmitNameEvent);
   };
 
   const handleSubmitTeaching = () => {
     send({
       type: "SUBMIT_TEACHING_RESPONSE",
       response: teachingResponse,
-    });
+    } as SubmitResponseEvent);
   };
 
   const handleSubmitSynthetic = () => {
