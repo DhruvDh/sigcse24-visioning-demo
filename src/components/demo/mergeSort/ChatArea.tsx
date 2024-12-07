@@ -1,4 +1,4 @@
-import { FC, useState, useEffect } from "react";
+import { FC, useState, useEffect, useRef } from "react";
 import { clsx } from "clsx";
 import { H4 } from "../../ui/Typography";
 import { MarkdownContainer } from "../../ui/MarkdownContainer";
@@ -60,7 +60,7 @@ const onboardingSteps: OnboardingStep[] = [
 const initialResponse = {
   id: 1,
   persona: "Ready Student",
-  content: "I am ready, please begin",
+  content: "I am ready, please begin.",
 };
 
 const onboardingVariants = {
@@ -91,6 +91,8 @@ export const ChatArea: FC = () => {
   const [showOnboarding, setShowOnboarding] = useState(true);
   const [direction, setDirection] = useState(0);
   const [error, setError] = useState<string | null>(null);
+  const [selectedResponse, setSelectedResponse] = useState<string | null>(null);
+  const chatContainerRef = useRef<HTMLDivElement>(null);
 
   const { sendMessage } = useLLMChat({
     onMessage: (content) => {
@@ -240,10 +242,41 @@ export const ChatArea: FC = () => {
   const syntheticResponses = state.context.mergeSort?.syntheticResponses;
   const isLoadingSynthetic = state.context.mergeSort?.isLoadingSynthetic ?? false;
 
+  // Reset selectedResponse when new synthetic responses are generated
+  useEffect(() => {
+    if (state.context.mergeSort?.isLoadingSynthetic) {
+      setSelectedResponse(null);
+    }
+  }, [state.context.mergeSort?.isLoadingSynthetic]);
+
   const handleSyntheticResponse = (response: string) => {
     if (isTyping) return;
+    setSelectedResponse(response);
     handleStudentResponse(response);
   };
+
+  // Update the scroll effect to handle both streaming and synthetic responses
+  useEffect(() => {
+    const shouldScroll = 
+      (state.context.mergeSort?.isStreaming || state.context.mergeSort?.syntheticResponses) && 
+      chatContainerRef.current;
+
+    if (shouldScroll) {
+      const scrollOptions: ScrollIntoViewOptions = {
+        behavior: 'smooth',
+        block: 'end',
+      };
+      
+      // Small delay to ensure content has rendered
+      setTimeout(() => {
+        chatContainerRef.current?.scrollIntoView(scrollOptions);
+      }, 100);
+    }
+  }, [
+    state.context.mergeSort?.isStreaming, 
+    state.context.mergeSort?.syntheticResponses,
+    messages.length
+  ]);
 
   return (
     <div className="h-full flex flex-col">
@@ -259,7 +292,7 @@ export const ChatArea: FC = () => {
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
           >
-            <div className="max-w-2xl mx-auto">
+            <div className="max-w-4xl mx-auto">
               <MotionDiv
                 key={onboardingStep}
                 custom={direction}
@@ -322,63 +355,66 @@ export const ChatArea: FC = () => {
           </MotionDiv>
         ) : (
           <MotionDiv
+            className="flex-1 overflow-y-auto p-6"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="flex-1 overflow-y-auto p-6"
           >
-            <AnimatePresence>
-              {messages.map((message, index) => (
-                <MotionDiv
-                  key={message.id}
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, y: -20 }}
-                  className={clsx(
-                    "mb-4 max-w-3xl",
-                    message.role === "assistant" ? "ml-0" : "ml-auto"
-                  )}
-                >
-                  <div className={clsx(
-                    "flex flex-col gap-1",
-                    message.role === "assistant" ? "items-start" : "items-end"
-                  )}>
-                    <span className={clsx(
-                      "text-xs font-sans text-muted/70",
-                      message.role === "assistant" ? "ml-2" : "mr-2"
-                    )}>
-                      {message.role === "assistant" ? "Tutor" : message.persona || "You"}
-                    </span>
-                    
+            <div className="max-w-4xl mx-auto">
+              <AnimatePresence>
+                {messages.map((message, index) => (
+                  <MotionDiv
+                    key={message.id}
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: -20 }}
+                    className={clsx(
+                      "mb-4 max-w-3xl",
+                      message.role === "assistant" ? "ml-0" : "ml-auto"
+                    )}
+                  >
                     <div className={clsx(
-                      "max-w-[85%] rounded-2xl px-6 py-4",
-                      message.role === "assistant" 
-                        ? "bg-slate-50 border border-slate-200" 
-                        : "bg-[#C56646]/10border border-[#C56646]/20",
-                      index === messages.length - 1 && "animate-fade-in"
+                      "flex flex-col gap-1",
+                      message.role === "assistant" ? "items-start" : "items-end"
                     )}>
-                      <MarkdownContainer 
-                        content={message.content}
-                        variant="message"
-                        className={clsx(
-                          message.role === "assistant" 
-                            ? "prose-slate prose-p:font-serif" 
-                            : [
-                                "prose-p:font-serif",
-                                "!text-gray-800",
-                                "[&_p]:text-gray-800",
-                                "[&_*]:text-gray-800",
-                                "prose-code:bg-[#C56646]/5"
-                              ],
-                          "whitespace-pre-wrap",
-                          "prose-p:mb-4 prose-p:last:mb-0"
-                        )}
-                      />
+                      <span className={clsx(
+                        "text-xs font-sans text-muted/70",
+                        message.role === "assistant" ? "ml-2" : "mr-2"
+                      )}>
+                        {message.role === "assistant" ? "Tutor" : message.persona || "You"}
+                      </span>
+                      
+                      <div className={clsx(
+                        "max-w-[95%] rounded-2xl px-6 py-4",
+                        message.role === "assistant" 
+                          ? "bg-slate-50 border border-slate-200" 
+                          : "bg-[#C56646]/10 border border-[#C56646]/20",
+                        index === messages.length - 1 && "animate-fade-in"
+                      )}>
+                        <MarkdownContainer 
+                          content={message.content}
+                          variant="message"
+                          className={clsx(
+                            message.role === "assistant" 
+                              ? "prose-slate prose-p:font-serif" 
+                              : [
+                                  "prose-p:font-serif",
+                                  "!text-gray-800",
+                                  "[&_p]:text-gray-800",
+                                  "[&_*]:text-gray-800",
+                                  "prose-code:bg-[#C56646]/5"
+                                ],
+                            "whitespace-pre-wrap",
+                            "prose-p:mb-4 prose-p:last:mb-0"
+                          )}
+                        />
+                      </div>
                     </div>
-                  </div>
-                </MotionDiv>
-              ))}
-            </AnimatePresence>
+                  </MotionDiv>
+                ))}
+              </AnimatePresence>
+              <div ref={chatContainerRef} />
+            </div>
           </MotionDiv>
         )}
       </AnimatePresence>
@@ -397,27 +433,36 @@ export const ChatArea: FC = () => {
               </span>
             </div>
           ) : syntheticResponses ? (
-            <div className="grid grid-cols-1 gap-4">
-              {syntheticResponses.map((response, index) => (
-                <button
-                  key={index}
-                  onClick={() => handleSyntheticResponse(response.response)}
-                  className={clsx(
-                    "p-4 rounded-lg text-left",
-                    "border border-gray-200",
-                    "hover:border-primary hover:bg-primary/5",
-                    "transition-colors duration-200"
-                  )}
-                  disabled={isTyping}
+            <AnimatePresence mode="wait">
+              {!selectedResponse && (
+                <MotionDiv
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -20 }}
+                  className="grid grid-cols-1 gap-4"
                 >
-                  <H4 className="text-primary mb-2">{response.name}</H4>
-                  <MarkdownContainer
-                    content={response.response}
-                    className="prose-p:mb-0 prose-p:text-base"
-                  />
-                </button>
-              ))}
-            </div>
+                  {syntheticResponses.map((response, index) => (
+                    <button
+                      key={index}
+                      onClick={() => handleSyntheticResponse(response.response)}
+                      className={clsx(
+                        "p-4 rounded-lg text-left",
+                        "border border-gray-200",
+                        "hover:border-primary hover:bg-primary/5",
+                        "transition-colors duration-200"
+                      )}
+                      disabled={isTyping}
+                    >
+                      <H4 className="text-primary mb-2">{response.name}</H4>
+                      <MarkdownContainer
+                        content={response.response}
+                        className="prose-p:mb-0 prose-p:text-base"
+                      />
+                    </button>
+                  ))}
+                </MotionDiv>
+              )}
+            </AnimatePresence>
           ) : messages.length === 0 && (
             <button
               onClick={() => {

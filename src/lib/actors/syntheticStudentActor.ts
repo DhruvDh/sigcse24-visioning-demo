@@ -9,6 +9,7 @@ interface StudentTraits {
   typingPersonality: TraitLevel;
   attention: TraitLevel;
   comprehension: TraitLevel;
+  patience: TraitLevel;
   dominantTrait: keyof Omit<StudentTraits, 'dominantTrait'>;
 }
 
@@ -37,6 +38,7 @@ function generateRandomTraits(): StudentTraits {
     typingPersonality: Math.ceil(Math.random() * 3) as TraitLevel,
     attention: Math.ceil(Math.random() * 3) as TraitLevel,
     comprehension,
+    patience: Math.ceil(Math.random() * 3) as TraitLevel,
   };
 
   // Select random dominant trait

@@ -3,8 +3,9 @@ import { H1, BodyLarge } from "../ui/Typography";
 import { useDemoStore } from "../../lib/store/demoStore";
 import { clsx } from "clsx";
 import { MotionDiv, containerAnimation, itemAnimation } from "../ui/Motion";
+import { AnimatePresence } from "framer-motion";
 
-type DemoState = 
+type DemoState =
   | "welcome"
   | "nameInput"
   | "teachingQuestion"
@@ -16,12 +17,12 @@ type DemoState =
 const isDemoState = (state: string): state is DemoState => {
   return [
     "welcome",
-    "nameInput", 
+    "nameInput",
     "teachingQuestion",
     "thankYouTeaching",
     "syntheticQuestion",
     "complete",
-    "mergeSort"
+    "mergeSort",
   ].includes(state);
 };
 
@@ -83,18 +84,18 @@ export const Introduction = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   useEffect(() => {
-    const stored = localStorage.getItem('previousResponses');
+    const stored = localStorage.getItem("previousResponses");
     if (stored) {
       try {
         const parsed = JSON.parse(stored);
         if (Date.now() - parsed.timestamp < 24 * 60 * 60 * 1000) {
           setPreviousSession(parsed);
         } else {
-          localStorage.removeItem('previousResponses');
+          localStorage.removeItem("previousResponses");
         }
       } catch (e) {
-        console.error('Error parsing stored responses:', e);
-        localStorage.removeItem('previousResponses');
+        console.error("Error parsing stored responses:", e);
+        localStorage.removeItem("previousResponses");
       }
     }
   }, []);
@@ -104,147 +105,6 @@ export const Introduction = () => {
       e.preventDefault();
       handleContinue();
     }
-  };
-
-  const renderPromptSection = () => {
-    const currentState = typeof state.value === 'string' 
-      ? state.value 
-      : Object.keys(state.value)[0];
-
-    if (!isDemoState(currentState)) return null;
-
-    if (currentState === "nameInput") {
-      return (
-        <>
-          <BodyLarge className="text-foreground max-w-3xl mb-8">
-            First, would you like to introduce yourself?
-          </BodyLarge>
-          <input
-            type="text"
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-            onKeyPress={handleKeyPress}
-            placeholder="Enter your name..."
-            className={clsx(
-              "w-full px-8 py-5 text-xl mb-12",
-              "border-2 border-[#D97757] rounded-lg",
-              "font-sans placeholder-gray-400",
-              "focus:outline-none focus:ring-2 focus:ring-[#D97757] focus:border-transparent",
-              "transition-all duration-200",
-              "bg-background"
-            )}
-          />
-        </>
-      );
-    }
-
-    if (currentState === "teachingQuestion") {
-      return (
-        <>
-          <BodyLarge className="text-foreground max-w-3xl mb-8">
-            <span className="text-primary font-medium">
-              Hi, {state.context.name}!
-            </span>
-            <br />
-            How do you interpret the idea of &ldquo;Teaching LLMs how to
-            Teach&rdquo;?
-          </BodyLarge>
-          <textarea
-            value={teachingResponse}
-            onChange={(e) => setTeachingResponse(e.target.value)}
-            onKeyPress={handleKeyPress}
-            placeholder="Share your thoughts..."
-            className={clsx(
-              "w-full px-8 py-5 text-xl mb-12",
-              "border-2 border-primary rounded-lg",
-              "font-serif placeholder-gray-400",
-              "focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent",
-              "transition-all duration-200",
-              "bg-background",
-              "min-h-[200px] resize-none"
-            )}
-          />
-        </>
-      );
-    }
-
-    if (currentState === "thankYouTeaching") {
-      return (
-        <MotionDiv
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          exit={{ opacity: 0 }}
-          className="flex items-center justify-center py-16"
-        >
-          <BodyLarge className="text-center">
-            <span className="text-primary font-medium text-2xl">
-              Thank you for sharing your thoughts!
-            </span>
-          </BodyLarge>
-        </MotionDiv>
-      );
-    }
-
-    if (currentState === "syntheticQuestion") {
-      return (
-        <>
-          <BodyLarge className="text-foreground max-w-3xl mb-8">
-            <span className="text-primary font-medium">
-              Hi, {state.context.name}!
-            </span>
-            <br />
-            How do you interpret the idea of &ldquo;Synthetic Students&rdquo;?
-            How do you envision &ldquo;Synthetic Students&rdquo; being used for
-            research?
-          </BodyLarge>
-          <textarea
-            value={syntheticResponse}
-            onChange={(e) => setSyntheticResponse(e.target.value)}
-            onKeyPress={handleKeyPress}
-            placeholder="Share your thoughts..."
-            className={clsx(
-              "w-full px-8 py-5 text-xl mb-12",
-              "border-2 border-primary rounded-lg",
-              "font-serif placeholder-gray-400",
-              "focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent",
-              "transition-all duration-200",
-              "bg-background",
-              "min-h-[200px] resize-none"
-            )}
-          />
-        </>
-      );
-    }
-
-    if (currentState === "welcome") {
-      return previousSession && (
-        <div className="fixed bottom-8 left-8 animate-fade-in">
-          <button
-            onClick={() => {
-              send({ 
-                type: "SUBMIT_NAME", 
-                name: previousSession.name,
-                responses: previousSession.responses
-              });
-            }}
-            className={clsx(
-              "px-6 py-5 rounded-lg",
-              "font-sans text-base",
-              "bg-gray-100 text-gray-700",
-              "hover:bg-gray-200",
-              "transition-colors duration-200",
-              "focus:outline-none focus:ring-2 focus:ring-gray-300",
-              "flex items-center gap-2"
-            )}
-          >
-            <span className="opacity-60">Continue as</span>
-            <span className="font-medium">{previousSession.name}</span>
-          </button>
-        </div>
-      );
-    }
-
-    return null;
   };
 
   const handleBegin = () => {
@@ -279,9 +139,10 @@ export const Introduction = () => {
   };
 
   const handleSkip = () => {
-    const currentState = typeof state.value === 'string' 
-      ? state.value 
-      : Object.keys(state.value)[0];
+    const currentState =
+      typeof state.value === "string"
+        ? state.value
+        : Object.keys(state.value)[0];
 
     if (!isDemoState(currentState)) return;
 
@@ -306,9 +167,10 @@ export const Introduction = () => {
   };
 
   const handleContinue = () => {
-    const currentState = typeof state.value === 'string' 
-      ? state.value 
-      : Object.keys(state.value)[0];
+    const currentState =
+      typeof state.value === "string"
+        ? state.value
+        : Object.keys(state.value)[0];
 
     if (!isDemoState(currentState)) return;
 
@@ -331,37 +193,166 @@ export const Introduction = () => {
         className="w-full max-w-4xl mx-auto p-8 md:p-12 lg:p-16"
         {...containerAnimation}
       >
-        <MotionDiv
-          {...itemAnimation}
-          transition={{ delay: 0.2, duration: 0.6 }}
-        >
-          <H1 className="text-8xl md:text-9xl lg:text-[10rem] mb-4 font-serif tracking-tight text-[#1F2937]">
-            Welcome!
-          </H1>
-        </MotionDiv>
-
-        <MotionDiv
-          {...itemAnimation}
-          transition={{ delay: 0.4, duration: 0.6 }}
-        >
-          <div className="text-2xl md:text-3xl mb-12">
-            <span className="text-slate-500 italic font-sans">
-              To a concise visioning activity.
-            </span>
-          </div>
-        </MotionDiv>
-
-        <MotionDiv
-          {...itemAnimation}
-          transition={{ delay: 0.6, duration: 0.6 }}
-        >
-          {(state.value === "welcome" || state.value === "nameInput") && (
-            <BodyLarge className="text-foreground max-w-3xl mb-16">
-              We encourage and invite interpretations of two questions for the
-              future. Click &ldquo;Let&apos;s go!&rdquo; to begin.
-            </BodyLarge>
+        <AnimatePresence mode="wait">
+          {state.matches("welcome") && (
+            <MotionDiv
+              key="welcome"
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -20 }}
+              className="text-center"
+            >
+              <H1 className="text-8xl md:text-9xl lg:text-[10rem] mb-4 font-serif tracking-tight text-[#1F2937]">
+                Welcome!
+              </H1>
+              <div className="text-2xl md:text-3xl mb-12">
+                <span className="text-slate-500 italic font-sans">
+                  To a concise visioning activity.
+                </span>
+              </div>
+              <BodyLarge className="text-foreground max-w-3xl mb-16">
+                We encourage and invite interpretations of two questions for the
+                future. Click &ldquo;Let&apos;s go!&rdquo; to begin.
+              </BodyLarge>
+            </MotionDiv>
           )}
-        </MotionDiv>
+
+          {state.matches("nameInput") && (
+            <MotionDiv
+              key="nameInput"
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -20 }}
+              className="text-center"
+            >
+              <H1 className="text-4xl md:text-5xl lg:text-6xl mb-8 font-serif">
+                First, would you like to introduce yourself?
+              </H1>
+              <input
+                type="text"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                onKeyPress={handleKeyPress}
+                placeholder="Enter your name..."
+                className={clsx(
+                  "w-full max-w-lg px-8 py-5 text-xl mb-12",
+                  "border-2 border-primary rounded-lg",
+                  "font-serif placeholder-gray-400",
+                  "focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent",
+                  "transition-all duration-200",
+                  "bg-background"
+                )}
+              />
+            </MotionDiv>
+          )}
+
+          {state.matches("greetingName") && state.context.name && (
+            <MotionDiv
+              key="greeting"
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -20 }}
+              className="text-center"
+            >
+              <H1 className="text-4xl md:text-5xl lg:text-6xl mb-4 font-serif">
+                Hi, {state.context.name}!
+              </H1>
+            </MotionDiv>
+          )}
+
+          {state.matches("teachingQuestion") && (
+            <MotionDiv
+              key="teaching"
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -20 }}
+            >
+              <H1 className="text-4xl md:text-5xl lg:text-6xl mb-8 font-serif">
+                &ldquo;Teaching LLMs how to Teach&rdquo; <br />
+                <br />
+                <span className="text-2xl md:text-3xl lg:text-4xl font-serif">
+                  What is your interpretation of this?
+                </span>
+              </H1>
+              <textarea
+                value={teachingResponse}
+                onChange={(e) => setTeachingResponse(e.target.value)}
+                onKeyPress={handleKeyPress}
+                placeholder="Share your thoughts..."
+                className={clsx(
+                  "w-full px-8 py-5 text-xl mb-12",
+                  "border-2 border-primary rounded-lg",
+                  "font-serif placeholder-gray-400",
+                  "focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent",
+                  "transition-all duration-200",
+                  "bg-background",
+                  "min-h-[200px] resize-none"
+                )}
+              />
+            </MotionDiv>
+          )}
+
+          {state.matches("thankYouTeaching") && (
+            <MotionDiv
+              key="thankYou"
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -20 }}
+              className="text-center"
+            >
+              <H1 className="text-4xl md:text-5xl lg:text-6xl mb-4 font-serif">
+                Thank you for sharing your thoughts!
+              </H1>
+            </MotionDiv>
+          )}
+
+          {state.matches("syntheticQuestion") && (
+            <MotionDiv
+              key="synthetic"
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -20 }}
+            >
+              <H1 className="text-4xl md:text-5xl lg:text-6xl mb-8 font-serif">
+                &ldquo;Synthetic Students&rdquo; <br />
+                <br />
+                <span className="text-2xl md:text-3xl lg:text-4xl font-serif">
+                  What is your interpretation of this? How do you envision their
+                  use?
+                </span>
+              </H1>
+              <textarea
+                value={syntheticResponse}
+                onChange={(e) => setSyntheticResponse(e.target.value)}
+                onKeyPress={handleKeyPress}
+                placeholder="Share your thoughts..."
+                className={clsx(
+                  "w-full px-8 py-5 text-xl mb-12",
+                  "border-2 border-primary rounded-lg",
+                  "font-serif placeholder-gray-400",
+                  "focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent",
+                  "transition-all duration-200",
+                  "bg-background",
+                  "min-h-[200px] resize-none"
+                )}
+              />
+            </MotionDiv>
+          )}
+
+          {state.matches("complete") && (
+            <MotionDiv
+              key="complete"
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -20 }}
+              className="text-center"
+            >
+              <H1 className="text-4xl md:text-5xl lg:text-6xl mb-4 font-serif">
+                Thank you for completing the activity!
+              </H1>
+            </MotionDiv>
+          )}
+        </AnimatePresence>
 
         <MotionDiv
           className="mt-8 flex justify-end"
@@ -371,96 +362,66 @@ export const Introduction = () => {
           {state.value === "welcome" ? (
             <div className="flex items-center gap-4">
               {previousSession && (
-                <MotionDiv
-                  initial={{ opacity: 0, x: -20 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  transition={{ delay: 1.0, duration: 0.4 }}
+                <button
+                  onClick={() => {
+                    send({
+                      type: "SUBMIT_NAME",
+                      name: previousSession.name,
+                      responses: previousSession.responses,
+                    });
+                  }}
+                  className={clsx(
+                    "px-4 py-2 rounded",
+                    "bg-gray-100 text-gray-600",
+                    "hover:bg-gray-200",
+                    "transition-colors duration-200"
+                  )}
                 >
-                  <button
-                    onClick={() => {
-                      send({ 
-                        type: "SUBMIT_NAME", 
-                        name: previousSession.name,
-                        responses: previousSession.responses
-                      });
-                    }}
-                    className={clsx(
-                      "px-6 py-5 rounded-lg",
-                      "font-sans text-base",
-                      "bg-gray-100 text-gray-700",
-                      "hover:bg-gray-200",
-                      "transition-colors duration-200",
-                      "focus:outline-none focus:ring-2 focus:ring-gray-300",
-                      "flex items-center gap-2"
-                    )}
-                  >
-                    <span className="opacity-60">Continue as</span>
-                    <span className="font-medium">{previousSession.name}</span>
-                  </button>
-                </MotionDiv>
+                  Continue as {previousSession.name}
+                </button>
               )}
               <button
                 onClick={handleBegin}
                 className={clsx(
-                  "px-10 py-5 rounded-lg",
-                  "font-sans font-medium text-xl",
-                  "bg-[#D97757] text-white",
-                  "hover:bg-[#C56646]",
+                  "px-4 py-2 rounded",
+                  "bg-primary text-white",
+                  "hover:bg-primary/90",
                   "transition-colors duration-200",
-                  "focus:outline-none focus:ring-2 focus:ring-[#D97757] focus:ring-offset-2",
                   "flex items-center"
                 )}
               >
-                Let&apos;s go!
-                <ArrowIcon />
+                Let&apos;s go! <ArrowIcon />
               </button>
             </div>
           ) : (
-            <div className="w-full">
-              {renderPromptSection()}
-              <div className="flex justify-end items-center gap-4">
-                <button
-                  onClick={handleSkip}
-                  className={clsx(
-                    "px-10 py-5 rounded-lg",
-                    "font-sans font-medium text-xl",
-                    "bg-gray-100 text-gray-500",
-                    "hover:bg-gray-200",
-                    "transition-colors duration-200",
-                    "focus:outline-none focus:ring-2 focus:ring-gray-300 focus:ring-offset-2",
-                    "flex items-center"
-                  )}
-                >
-                  Skip
-                  <SadFaceIcon />
-                </button>
-                <button
-                  onClick={handleContinue}
-                  disabled={isSubmitting}
-                  className={clsx(
-                    "px-10 py-5 rounded-lg",
-                    "font-sans font-medium text-xl",
-                    "bg-[#D97757] text-white",
-                    "hover:bg-[#C56646]",
-                    "transition-colors duration-200",
-                    "focus:outline-none focus:ring-2 focus:ring-[#D97757] focus:ring-offset-2",
-                    "flex items-center",
-                    isSubmitting && "opacity-50 cursor-not-allowed"
-                  )}
-                >
-                  {isSubmitting ? (
-                    <>
-                      Saving...
-                      <span className="ml-2 inline-block animate-spin">⟳</span>
-                    </>
-                  ) : (
-                    <>
-                      Continue
-                      <ArrowIcon />
-                    </>
-                  )}
-                </button>
-              </div>
+            <div className="flex items-center gap-4">
+              <button
+                onClick={handleSkip}
+                className={clsx(
+                  "px-4 py-2 rounded",
+                  "bg-gray-100 text-gray-600",
+                  "hover:bg-gray-200",
+                  "transition-colors duration-200",
+                  isSubmitting && "opacity-50 cursor-not-allowed"
+                )}
+                disabled={isSubmitting}
+              >
+                Skip {state.matches("nameInput") && <SadFaceIcon />}
+              </button>
+              <button
+                onClick={handleContinue}
+                className={clsx(
+                  "px-4 py-2 rounded",
+                  "bg-primary text-white",
+                  "hover:bg-primary/90",
+                  "transition-colors duration-200",
+                  "flex items-center",
+                  isSubmitting && "opacity-50 cursor-not-allowed"
+                )}
+                disabled={isSubmitting}
+              >
+                Continue <ArrowIcon />
+              </button>
             </div>
           )}
         </MotionDiv>
