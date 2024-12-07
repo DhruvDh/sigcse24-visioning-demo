@@ -1,5 +1,12 @@
 import { setup } from "xstate";
 
+type Milestone = {
+  id: string;
+  text: string;
+  description: string;
+  isComplete: boolean;
+};
+
 type DemoContext = {
   name: string;
   responses: {
@@ -12,12 +19,14 @@ type DemoContext = {
       persona: string;
       response: string;
     }>;
-    milestones: Array<{
-      id: number;
-      text: string;
-      isComplete: boolean;
-    }>;
+    milestones: Milestone[];
     systemMessage?: string;
+    messages: Array<{
+      id: number;
+      role: "system" | "user" | "assistant";
+      content: string;
+      persona?: string;
+    }>;
   };
 };
 
@@ -39,7 +48,7 @@ type DemoEvent =
       type: "SELECT_RESPONSE";
       persona: string;
       response: string;
-      milestoneId: number;
+      milestoneId: string;
     }
   | {
       type: "UPDATE_OPTIONS";
@@ -48,12 +57,68 @@ type DemoEvent =
   | {
       type: "UPDATE_SYSTEM_MESSAGE";
       systemMessage: string;
-    };
+    }
+  | {
+      type: "UPDATE_MESSAGES";
+      messages: Array<{
+        id: number;
+        role: "system" | "user" | "assistant";
+        content: string;
+        persona?: string;
+      }>;
+    }
+  | { type: "CHECK_MILESTONES" };
+
+const mergeSortMilestones: Milestone[] = [
+  {
+    id: 'inefficiency_discovery',
+    text: 'Understanding Sorting Inefficiency',
+    description: 'Recognizing how comparison-based sorting becomes impractical as input size grows',
+    isComplete: false
+  },
+  {
+    id: 'splitting_insight',
+    text: 'Discovering Divide-and-Conquer',
+    description: 'Understanding how breaking the problem into smaller parts can help reduce complexity',
+    isComplete: false
+  },
+  {
+    id: 'merging_development',
+    text: 'Understanding Systematic Merging',
+    description: 'Discovering how to systematically combine sorted sequences',
+    isComplete: false
+  },
+  {
+    id: 'recursive_pattern',
+    text: 'Grasping Recursive Nature',
+    description: 'Understanding how the same process applies at each level',
+    isComplete: false
+  },
+  {
+    id: 'efficiency_analysis',
+    text: 'Comprehending Efficiency',
+    description: 'Understanding why merge sort achieves O(n log n) complexity',
+    isComplete: false
+  }
+];
+
+// Add state type definition
+type DemoStates = {
+  welcome: {};
+  nameInput: {};
+  teachingQuestion: {};
+  thankYouTeaching: {};
+  syntheticQuestion: {};
+  complete: {};
+  mergeSort: {};
+};
 
 export const demoMachine = setup({
   types: {
     context: {} as DemoContext,
     events: {} as DemoEvent,
+    // Add states type
+    states: {} as DemoStates,
   },
   actions: {
     setName: ({ context }, event: { name: string }) => {
@@ -69,13 +134,8 @@ export const demoMachine = setup({
       context.mergeSort = {
         currentStep: 0,
         selectedResponses: [],
-        milestones: [
-          { id: 1, text: "Understanding the divide step", isComplete: false },
-          { id: 2, text: "Understanding the merge step", isComplete: false },
-          { id: 3, text: "Grasping recursive nature", isComplete: false },
-          { id: 4, text: "Analyzing time complexity", isComplete: false },
-        ],
-        systemMessage: undefined
+        milestones: mergeSortMilestones,
+        messages: [],
       };
     },
     addSelectedResponse: (
@@ -89,7 +149,7 @@ export const demoMachine = setup({
         });
       }
     },
-    updateMilestones: ({ context }, event: { milestoneId: number }) => {
+    updateMilestones: ({ context }, event: { milestoneId: string }) => {
       if (context.mergeSort) {
         const milestone = context.mergeSort.milestones.find(
           (m) => m.id === event.milestoneId
@@ -143,6 +203,27 @@ export const demoMachine = setup({
         context.mergeSort.systemMessage = systemMessage;
       }
     },
+    updateMessages: ({ context }, { messages }) => {
+      if (context.mergeSort) {
+        context.mergeSort.messages = messages;
+      }
+    },
+    checkMilestones: ({ context }) => {
+      if (!context.mergeSort) return;
+      
+      const lastMessage = context.mergeSort.messages[context.mergeSort.messages.length - 1];
+      if (!lastMessage || lastMessage.role !== 'assistant') return;
+
+      // Check for milestone markers
+      const milestoneMatch = lastMessage.content.match(/MILESTONE\[([\w_]+)\]/);
+      if (milestoneMatch) {
+        const milestoneId = milestoneMatch[1];
+        const milestone = context.mergeSort.milestones.find(m => m.id === milestoneId);
+        if (milestone) {
+          milestone.isComplete = true;
+        }
+      }
+    }
   },
 }).createMachine({
   id: "demo",
@@ -253,13 +334,8 @@ export const demoMachine = setup({
             context.mergeSort = {
               currentStep: 0,
               selectedResponses: [],
-              milestones: [
-                { id: 1, text: "Understanding the divide step", isComplete: false },
-                { id: 2, text: "Understanding the merge step", isComplete: false },
-                { id: 3, text: "Grasping recursive nature", isComplete: false },
-                { id: 4, text: "Analyzing time complexity", isComplete: false },
-              ],
-              systemMessage: undefined
+              milestones: mergeSortMilestones,
+              messages: [],
             };
           }
         }
@@ -290,6 +366,15 @@ export const demoMachine = setup({
             type: "updateSystemMessage",
             params: ({ event }) => ({ systemMessage: event.systemMessage })
           }]
+        },
+        UPDATE_MESSAGES: {
+          actions: [{ 
+            type: "updateMessages",
+            params: ({ event }) => ({ messages: event.messages })
+          }]
+        },
+        CHECK_MILESTONES: {
+          actions: "checkMilestones"
         }
       },
     },

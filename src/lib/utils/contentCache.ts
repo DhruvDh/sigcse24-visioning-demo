@@ -41,4 +41,9 @@ export async function fetchAndCache(url: string, cacheKey: string): Promise<stri
     }
     throw error;
   }
+}
+
+// Add this function to construct system message
+export function constructSystemMessage(instructions: string, lessonContent: string): string {
+  return instructions.replace('{{LESSON_CONTENT}}', lessonContent);
 } 

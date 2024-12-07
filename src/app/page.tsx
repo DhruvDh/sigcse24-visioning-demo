@@ -1,10 +1,21 @@
-'use client';
+"use client";
 
-import { useEffect } from 'react';
-import { Introduction } from '../components/demo/Introduction';
-import { Complete } from '../components/demo/mergeSort/Complete';
-import { MergeSortLayout } from '../components/demo/mergeSort/MergeSortLayout';
-import { useDemoStore } from '../lib/store/demoStore';
+import { useEffect } from "react";
+import { Introduction } from "../components/demo/Introduction";
+import { Complete } from "../components/demo/mergeSort/Complete";
+import { MergeSortLayout } from "../components/demo/mergeSort/MergeSortLayout";
+import { useDemoStore } from "../lib/store/demoStore";
+import type { StateValue as XStateValue } from "xstate";
+
+// Add type for state values
+type StateValue =
+  | "welcome"
+  | "nameInput"
+  | "teachingQuestion"
+  | "thankYouTeaching"
+  | "syntheticQuestion"
+  | "complete"
+  | "mergeSort";
 
 export default function Home() {
   const { state, loadContent, isContentLoading } = useDemoStore();
@@ -23,24 +34,28 @@ export default function Home() {
       );
     }
 
+    // Properly typed state matching
+    const matches = (value: StateValue) =>
+      state.matches(value);
+
     // States handled by Introduction component
     if (
-      state.matches('welcome') ||
-      state.matches('nameInput') ||
-      state.matches('teachingQuestion') ||
-      state.matches('thankYouTeaching') ||
-      state.matches('syntheticQuestion')
+      matches("welcome") ||
+      matches("nameInput") ||
+      matches("teachingQuestion") ||
+      matches("thankYouTeaching") ||
+      matches("syntheticQuestion")
     ) {
       return <Introduction />;
     }
 
     // Complete state
-    if (state.matches('complete')) {
+    if (matches("complete")) {
       return <Complete />;
     }
 
     // MergeSort state
-    if (state.matches('mergeSort')) {
+    if (matches("mergeSort")) {
       return <MergeSortLayout />;
     }
 
@@ -48,9 +63,5 @@ export default function Home() {
     return <Introduction />;
   };
 
-  return (
-    <main className="min-h-screen bg-white">
-      {renderContent()}
-    </main>
-  );
+  return <main className="min-h-screen bg-white">{renderContent()}</main>;
 }

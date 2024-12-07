@@ -14,11 +14,12 @@ interface DemoStore {
   systemMessage: string | null;
   isContentLoading: boolean;
   loadContent: () => Promise<void>;
+  updateMilestone: (milestoneId: string) => void;
 }
 
 const GITHUB_BASE = "https://raw.githubusercontent.com/DhruvDh/mergesort-egui/refs/heads/main/src";
 
-export const useDemoStore = create<DemoStore>((set, get) => {
+export const useDemoStore = create<DemoStore>((set) => {
   const actor = createActor(demoMachine, {
     systemId: 'demo-system'
   });
@@ -70,6 +71,32 @@ export const useDemoStore = create<DemoStore>((set, get) => {
         console.error('Error loading content:', error);
         set({ isContentLoading: false });
       }
+    },
+    updateMilestone: (milestoneId: string) => {
+      set(state => {
+        const mergeSort = state.state.context.mergeSort;
+        if (!mergeSort) return state;
+
+        const updatedMilestones = mergeSort.milestones.map(milestone => 
+          milestone.id === milestoneId 
+            ? { ...milestone, isComplete: true }
+            : milestone
+        );
+
+        return {
+          ...state,
+          state: {
+            ...state.state,
+            context: {
+              ...state.state.context,
+              mergeSort: {
+                ...mergeSort,
+                milestones: updatedMilestones
+              }
+            }
+          }
+        };
+      });
     }
   };
 });

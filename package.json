@@ -9,6 +9,7 @@
     "lint": "next lint"
   },
   "dependencies": {
+    "@microsoft/fetch-event-source": "^2.0.1",
     "@xstate/react": "^5.0.0",
     "framer-motion": "^11.13.1",
     "micromark": "^4.0.1",

@@ -1,48 +1,21 @@
 import { FC } from "react";
-import { H3, Subtle } from "../../ui/Typography";
+import { H3, H4, Subtle } from "../../ui/Typography";
 import { clsx } from "clsx";
-
-type Milestone = {
-  id: number;
-  text: string;
-  isComplete: boolean;
-};
-
-// Temporary mock data - will be moved to state management
-const mockMilestones: Milestone[] = [
-  {
-    id: 1,
-    text: "Understanding the divide step",
-    isComplete: false,
-  },
-  {
-    id: 2,
-    text: "Grasping recursive division",
-    isComplete: false,
-  },
-  {
-    id: 3,
-    text: "Comprehending the merge process",
-    isComplete: false,
-  },
-  {
-    id: 4,
-    text: "Analyzing time complexity",
-    isComplete: false,
-  },
-];
+import { useDemoStore } from "../../../lib/store/demoStore";
 
 export const MilestonesPanel: FC = () => {
+  const milestones = useDemoStore(state => state.state.context.mergeSort?.milestones ?? []);
+
   return (
     <div className="h-full flex flex-col">
       <div className="flex-1">
-        <H3 className="mb-6">Learning Milestones</H3>
-        <div className="space-y-4">
-          {mockMilestones.map((milestone) => (
+        <H3 className="mb-6">Learning Progress</H3>
+        <div className="space-y-3">
+          {milestones.map((milestone, index) => (
             <div
               key={milestone.id}
               className={clsx(
-                "p-4 rounded-lg",
+                "p-3 rounded-lg",
                 "border border-gray-200",
                 "transition-colors duration-200",
                 milestone.isComplete
@@ -50,34 +23,42 @@ export const MilestonesPanel: FC = () => {
                   : "bg-white"
               )}
             >
-              <div className="flex items-center gap-3">
+              <div className="flex items-start gap-3">
                 <div
                   className={clsx(
-                    "w-5 h-5 rounded-full",
+                    "w-4 h-4 rounded-full mt-1",
                     "border-2",
                     milestone.isComplete
                       ? "bg-primary border-primary"
                       : "border-gray-300"
                   )}
                 />
-                <span
-                  className={clsx(
-                    "font-medium",
-                    milestone.isComplete && "text-primary"
+                <div className="flex-1">
+                  <Subtle
+                    className={clsx(
+                      "font-medium text-sm",
+                      milestone.isComplete && "text-primary"
+                    )}
+                  >
+                    {milestone.isComplete 
+                      ? milestone.text
+                      : `Milestone ${String.fromCharCode(65 + index)}`}
+                  </Subtle>
+                  {milestone.isComplete && (
+                    <>
+                      <p className="text-sm text-gray-600 mt-1">
+                        {milestone.description}
+                      </p>
+                      <div className="text-xs text-primary/80 mt-2">
+                        ✓ Understanding verified
+                      </div>
+                    </>
                   )}
-                >
-                  {milestone.text}
-                </span>
+                </div>
               </div>
             </div>
           ))}
         </div>
-      </div>
-      <div className="mt-6 p-4 bg-gray-100 rounded-lg">
-        <Subtle className="font-medium mb-2">Other Interpretations</Subtle>
-        <p className="text-sm text-gray-600">
-          See how different students approach these concepts.
-        </p>
       </div>
     </div>
   );

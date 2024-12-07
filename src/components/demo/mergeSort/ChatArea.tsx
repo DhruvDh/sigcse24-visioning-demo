@@ -1,162 +1,383 @@
-import { FC } from "react";
+import { FC, useState, useEffect } from "react";
 import { clsx } from "clsx";
 import { H4 } from "../../ui/Typography";
 import { MarkdownContainer } from "../../ui/MarkdownContainer";
+import { useLLMChat } from "../../../lib/hooks/useLLMChat";
+import { useDemoStore } from "../../../lib/store/demoStore";
+import { AnimatePresence } from "framer-motion";
+import { MotionDiv } from "../../ui/Motion";
+import {
+  constructSystemMessage,
+  fetchAndCache,
+} from "../../../lib/utils/contentCache";
 
-type Message = {
+type MessageRole = "system" | "user" | "assistant";
+
+interface ChatMessage {
   id: number;
-  role: "tutor" | "student";
+  role: MessageRole;
   content: string;
   persona?: string;
-};
+}
 
-const createMessage = (
-  message: Omit<Message, "content"> & { content: string }
-): Message => ({
-  ...message,
-  content: String.raw`${message.content}`,
-});
-
-// Temporary mock data - will be moved to state management
-const mockMessages: Message[] = [
-  createMessage({
-    id: 1,
-    role: "tutor",
-    content: String.raw`
-It's great that you're thinking about insertion sort! Let's explore how it works and then we'll dive into its worst-case complexity.
-
-When you use insertion sort, you essentially build a sorted portion of the list one element at a time. You look at each number and find the right place for it in the already sorted part of the list. 
-
-Let's take a closer look at how many comparisons and shifts you might need in the worst-case scenario. 
-
-Imag
-1. **First Element (5)**: No comparisons needed, it's the first element.
-2. **Second Element (4)**: You compare it with 5. One comparison, and you shift 5 to the right.
-3. **Third Element (3)**: You compare it with 5 (1 comparison), then with 4 (another comparison). You shift both 5 and 4 to the right. That's 2 comparisons.
-4. **Fourth Element (2)**: You compare it with 5 (1), 4 (2), and 3 (3). You shift all three to the right. That's 3 comparisons.
-5. **Fifth Element (1)**: You compare it with 5 (1), 4 (2), 3 (3), and 2 (4). You shift all four to the right. That's 4 comparisons.
-
-Now, let's summarize the comparisons:
-
-- For the first element: 0 comparisons
-- For the second element: 1 comparison
-- For the third element: 2 comparisons
-- For the fourth element: 3 comparisons
-- For the fifth element: 4 comparisons
-
-If we add these up, we get:
-
-\[
-0 + 1 + 2 + 3 + 4 = 10 \text{ comparisons}
-\]
-
-In general, for a list of size \( n \), before?
-
-
-\[
-0 + 1 + 2 + ... + (n-1) = \frac{(n-1) \cdot n}{2}
-\]
-
-This sum simplifies to \( O(n^2) \) in big O notation, which means that as the size of the list grows, the time it takes to sort it grows quadratically.
-
-So, in summary, the worst-case time complexity of insertion sort is \( O(n^2) \). 
-
-Does this make sense? Would you like to explore how we might improve upon this sorting method?
-    `,
-  }),
-];
-
-type ResponseOption = {
+interface OnboardingStep {
   id: number;
-  persona: string;
+  title: string;
   content: string;
-};
+}
 
-const mockResponses: ResponseOption[] = [
+const onboardingSteps: OnboardingStep[] = [
   {
     id: 1,
-    persona: "Analytical Alex",
+    title: "Here's an Interactive Demo",
     content:
-      "I know they're algorithms that arrange elements in a specific order, usually ascending or descending.",
+      "Showcasing an instance of our interpretation of the questions for the future posed earlier.",
   },
   {
     id: 2,
-    persona: "Curious Charlie",
-    content: "I've heard of bubble sort before - is merge sort similar?",
+    title: "How It Works",
+    content:
+      "This a conversational tutorial, with an LLM taught how to teach as a tutor. Instead of typing a response, you will choose one of many synthetic student responses we generate.",
   },
   {
     id: 3,
-    persona: "Practical Pat",
+    title: "Why?",
     content:
-      "I've used sorting in my code before but never really thought about how it works internally.",
+      "We all have a picture of what types of students exist in our classroom. It would help to experience conversational tutoring as these types of students would experience it.",
+  },
+  {
+    id: 4,
+    title: "Ready to Begin",
+    content: "Click on the student response below to start the demo.",
   },
 ];
 
+const initialResponse = {
+  id: 1,
+  persona: "Ready Student",
+  content: "I am ready, please begin",
+};
+
+const onboardingVariants = {
+  enter: (direction: number) => ({
+    x: direction > 0 ? 100 : -100,
+    opacity: 0,
+  }),
+  center: {
+    x: 0,
+    opacity: 1,
+  },
+  exit: (direction: number) => ({
+    x: direction < 0 ? 100 : -100,
+    opacity: 0,
+  }),
+} as const;
+
+const GITHUB_BASE =
+  "https://raw.githubusercontent.com/DhruvDh/mergesort-egui/refs/heads/main/src";
+
 export const ChatArea: FC = () => {
+  const { state, send } = useDemoStore();
+  const [llmInstructions, setLlmInstructions] = useState<string | null>(null);
+  const [lessonContent, setLessonContent] = useState<string | null>(null);
+  const messages = state.context.mergeSort?.messages ?? [];
+  const [isTyping, setIsTyping] = useState(false);
+  const [onboardingStep, setOnboardingStep] = useState(1);
+  const [showOnboarding, setShowOnboarding] = useState(true);
+  const [direction, setDirection] = useState(0);
+
+  const { sendMessage } = useLLMChat({
+    onMessage: (content) => {
+      const existingMessages = state.context.mergeSort?.messages ?? [];
+      const lastMessage = existingMessages[existingMessages.length - 1];
+
+      if (!lastMessage || lastMessage.role !== "assistant") {
+        // Create new assistant message
+        send({
+          type: "UPDATE_MESSAGES",
+          messages: [
+            ...existingMessages,
+            {
+              id: Date.now(),
+              role: "assistant",
+              content,
+              persona: "Tutor",
+            },
+          ],
+        });
+      } else {
+        // Update existing assistant message
+        send({
+          type: "UPDATE_MESSAGES",
+          messages: existingMessages.map((msg) =>
+            msg.id === lastMessage.id
+              ? { ...msg, content: msg.content + content }
+              : msg
+          ),
+        });
+      }
+    },
+    onComplete: () => {
+      setIsTyping(false);
+      send({ type: "CHECK_MILESTONES" });
+    },
+    onError: (error) => {
+      console.error("Chat error:", error);
+      setIsTyping(false);
+    },
+  });
+
+  const handleStudentResponse = async (content: string) => {
+    if (isTyping) return;
+    setIsTyping(true);
+
+    if (!llmInstructions || !lessonContent) {
+      console.error("System message not set!");
+      setIsTyping(false);
+      return;
+    }
+
+    // First add student message
+    const updatedMessages: ChatMessage[] = [
+      ...messages,
+      {
+        id: Date.now(),
+        role: "user" as const,
+        content,
+        persona: "Student"
+      }
+    ];
+
+    send({
+      type: "UPDATE_MESSAGES",
+      messages: updatedMessages
+    });
+
+    // Then send to API
+    const systemMessage = constructSystemMessage(
+      llmInstructions,
+      lessonContent
+    );
+    const messageToSend: { role: MessageRole; content: string }[] = [
+      {
+        role: "system",
+        content: systemMessage,
+      },
+      ...updatedMessages.map((msg) => ({
+        role: msg.role,
+        content: msg.content,
+      }))
+    ];
+
+    try {
+      await sendMessage(messageToSend);
+    } catch (error) {
+      console.error("Failed to send message:", error);
+      setIsTyping(false);
+    }
+  };
+
+  // Load content when component mounts
+  useEffect(() => {
+    const loadContent = async () => {
+      try {
+        const [instructions, lesson] = await Promise.all([
+          fetchAndCache(`${GITHUB_BASE}/llmInstructions.md`, "llmInstructions"),
+          fetchAndCache(`${GITHUB_BASE}/lessonContent.md`, "lessonContent"),
+        ]);
+
+        setLlmInstructions(instructions);
+        setLessonContent(lesson);
+
+        if (instructions && lesson) {
+          const systemMessage = constructSystemMessage(instructions, lesson);
+          send({
+            type: "UPDATE_SYSTEM_MESSAGE",
+            systemMessage,
+          });
+        }
+      } catch (error) {
+        console.error("Error loading content:", error);
+      }
+    };
+
+    loadContent();
+  }, [send]);
+
+  // Add effect to handle machine state changes
+  useEffect(() => {
+    if (state.value === "complete") {
+      // Handle completion
+      setShowOnboarding(false);
+    }
+  }, [state.value]);
+
+  const handleOnboardingNavigation = (dir: "prev" | "next") => {
+    setDirection(dir === "next" ? 1 : -1);
+    setOnboardingStep((prev) =>
+      dir === "next"
+        ? Math.min(prev + 1, onboardingSteps.length)
+        : Math.max(prev - 1, 1)
+    );
+  };
+
   return (
     <div className="h-full flex flex-col">
-      <div className="flex-1 overflow-y-auto p-6">
-        {mockMessages.map((message) => (
-          <div
-            key={message.id}
-            className={clsx(
-              "mb-6 max-w-3xl",
-              message.role === "tutor" ? "ml-0" : "ml-auto"
-            )}
+      <AnimatePresence mode="wait" custom={direction}>
+        {showOnboarding ? (
+          <MotionDiv
+            className="flex-1 p-6"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
           >
-            {message.persona && (
-              <H4 className="text-primary mb-2">{message.persona}</H4>
-            )}
-            <div
-              className={clsx(
-                "rounded-lg",
-                message.role === "tutor" ? "bg-gray-100" : "bg-primary/10"
-              )}
-            >
-              <MarkdownContainer
-                content={message.content}
-                className={clsx(
-                  "p-4",
-                  // Override some prose styles for chat messages
-                  "prose-p:mb-2 last:prose-p:mb-0",
-                  "prose-headings:mb-2",
-                  // Adjust text sizes for chat context
-                  "prose-p:text-base",
-                  "prose-headings:text-lg"
-                )}
-              />
-            </div>
-          </div>
-        ))}
-      </div>
+            <div className="max-w-2xl mx-auto">
+              <MotionDiv
+                key={onboardingStep}
+                custom={direction}
+                variants={onboardingVariants}
+                initial="enter"
+                animate="center"
+                exit="exit"
+                transition={{ duration: 0.3 }}
+                className="bg-white rounded-lg p-8 shadow-lg"
+              >
+                <H4 className="mb-4">
+                  {onboardingSteps[onboardingStep - 1].title}
+                </H4>
+                <p className="mb-8">
+                  {onboardingSteps[onboardingStep - 1].content}
+                </p>
 
-      <div className="border-t border-gray-200 p-6">
-        <div className="grid grid-cols-3 gap-4">
-          {mockResponses.map((response) => (
+                <div className="flex justify-between">
+                  <button
+                    onClick={() => handleOnboardingNavigation("prev")}
+                    disabled={onboardingStep === 1}
+                    className={clsx(
+                      "px-4 py-2 rounded",
+                      "transition-colors duration-200",
+                      onboardingStep === 1
+                        ? "bg-gray-100 text-gray-400"
+                        : "bg-gray-200 hover:bg-gray-300"
+                    )}
+                  >
+                    Previous
+                  </button>
+
+                  <div className="flex gap-2">
+                    <button
+                      onClick={() => setShowOnboarding(false)}
+                      className="px-4 py-2 rounded bg-gray-200 hover:bg-gray-300"
+                    >
+                      Skip
+                    </button>
+
+                    {onboardingStep < onboardingSteps.length ? (
+                      <button
+                        onClick={() => handleOnboardingNavigation("next")}
+                        className="px-4 py-2 rounded bg-primary text-white hover:bg-primary/90"
+                      >
+                        Next
+                      </button>
+                    ) : (
+                      <button
+                        onClick={() => setShowOnboarding(false)}
+                        className="px-4 py-2 rounded bg-primary text-white hover:bg-primary/90"
+                      >
+                        Start
+                      </button>
+                    )}
+                  </div>
+                </div>
+              </MotionDiv>
+            </div>
+          </MotionDiv>
+        ) : (
+          <MotionDiv
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="flex-1 overflow-y-auto p-6"
+          >
+            <AnimatePresence>
+              {messages.map((message) => (
+                <MotionDiv
+                  key={message.id}
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -20 }}
+                  className={clsx(
+                    "mb-4 max-w-3xl",
+                    message.role === "assistant" ? "ml-0" : "ml-auto"
+                  )}
+                >
+                  {message.persona && (
+                    <H4
+                      className={clsx(
+                        "mb-1 text-[10px] uppercase tracking-wide",
+                        message.role === "assistant"
+                          ? "text-primary/70"
+                          : "text-primary/70 text-right"
+                      )}
+                    >
+                      {message.persona}
+                    </H4>
+                  )}
+                  <div
+                    className={clsx(
+                      "rounded-lg",
+                      message.role === "assistant"
+                        ? "bg-gray-100"
+                        : "bg-primary/10"
+                    )}
+                  >
+                    <MarkdownContainer
+                      content={message.content}
+                      className={clsx(
+                        "p-3",
+                        "prose-p:mb-2 last:prose-p:mb-0",
+                        "prose-headings:mb-2",
+                        "prose-p:text-sm",
+                        "prose-headings:text-base"
+                      )}
+                    />
+                  </div>
+                </MotionDiv>
+              ))}
+            </AnimatePresence>
+          </MotionDiv>
+        )}
+      </AnimatePresence>
+
+      <MotionDiv
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        className="border-t border-gray-200 p-6"
+      >
+        <div className="grid grid-cols-1 gap-4">
+          {messages.length === 0 && (
             <button
-              key={response.id}
+              onClick={() => {
+                setShowOnboarding(false);
+                handleStudentResponse(initialResponse.content);
+              }}
               className={clsx(
                 "p-4 rounded-lg text-left",
                 "border border-gray-200",
-                "hover:border-[#D97757] hover:bg-[#D97757]/5",
+                "hover:border-primary hover:bg-primary/5",
                 "transition-colors duration-200"
               )}
+              disabled={isTyping}
             >
-              <H4 className="text-[#D97757] mb-2">{response.persona}</H4>
+              <H4 className="text-primary mb-2">{initialResponse.persona}</H4>
               <MarkdownContainer
-                content={response.content}
-                className={clsx(
-                  // Override some prose styles for response options
-                  "prose-p:mb-0",
-                  "prose-p:text-base",
-                  // Disable link styles in buttons
-                  "prose-a:no-underline"
-                )}
+                content={initialResponse.content}
+                className="prose-p:mb-0 prose-p:text-base"
               />
             </button>
-          ))}
+          )}
         </div>
-      </div>
+      </MotionDiv>
     </div>
   );
 };
