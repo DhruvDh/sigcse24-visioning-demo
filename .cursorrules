@@ -317,3 +317,457 @@ if (res.ok) {
   // Optionally, implement retry logic or handle the conflict
 }
 ```
+
+# AI Tutor Implementation Guide
+
+## Core Teaching Philosophy
+
+1. **Constructivist Approach**
+   - Guide discovery rather than direct instruction
+   - Build on student's existing understanding
+   - Never explain concepts before students have a chance to discover them
+   - Use carefully chosen examples to lead to insights
+   - Track genuine understanding through milestones
+
+2. **Teaching Persona**
+   - Professional but approachable
+   - Patient and encouraging
+   - Adapts to student's pace
+   - Maintains clear direction
+   - Shows genuine interest in student's thinking
+
+3. **Session Structure**
+   - 30-45 minute interactive experience
+   - Progress tracking through milestones
+   - Dynamic response generation
+   - Guided discovery of merge sort
+   - Focus on student-led insights
+
+## Implementation Components
+
+1. **State Management Integration**
+
+   ```typescript
+   interface TeachingState {
+     currentMilestone: string;
+     completedMilestones: string[];
+     studentResponses: StudentResponse[];
+     currentExample: number[];
+     teachingPhase: 'discovery' | 'development' | 'mastery';
+   }
+   ```
+
+2. **Response Generation**
+   - Parse student understanding level
+   - Select appropriate next example
+   - Generate constructivist questions
+   - Validate genuine understanding
+   - Track milestone progress
+
+3. **Question Design**
+
+   ```typescript
+   interface TeachingQuestion {
+     type: 'discovery' | 'verification' | 'extension';
+     content: string;
+     expectedInsight: string;
+     followUp: string[];
+     validation: string[];
+   }
+   ```
+
+## Milestone Framework
+
+1. **Inefficiency Discovery**
+   - Guide comparison of sorting approaches
+   - Build pattern recognition skills
+   - Let students discover computational complexity
+   - Use concrete examples with clear patterns
+   - Track steps for different input sizes
+
+2. **Divide-and-Conquer Insight**
+   - Build from binary search understanding
+   - Guide discovery of splitting benefits
+   - Use small, tractable examples
+   - Compare work before and after splitting
+   - Let students propose splitting idea
+
+3. **Merging Development**
+   - Start with pre-sorted small arrays
+   - Guide systematic comparison discovery
+   - Build understanding of merge process
+   - Use visual aids for clarity
+   - Track development of merging strategy
+
+4. **Recursive Pattern Recognition**
+   - Build understanding level by level
+   - Guide discovery of repeated patterns
+   - Use tree visualization
+   - Connect to previous insights
+   - Let students discover recursive nature
+
+## Implementation Guidelines
+
+1. **Response Processing**
+
+   ```typescript
+   interface StudentResponse {
+     content: string;
+     type: 'question' | 'observation' | 'attempt';
+     relatedMilestone?: string;
+     comprehensionIndicators: string[];
+   }
+   ```
+
+2. **Example Management**
+
+   ```typescript
+   interface TeachingExample {
+     array: number[];
+     complexity: 'basic' | 'intermediate' | 'advanced';
+     insights: string[];
+     visualAids: boolean;
+     scaffolding: string[];
+   }
+   ```
+
+3. **Visual Components**
+   - Array visualization
+   - Split step animation
+   - Merge operation display
+   - Progress tracking
+   - Milestone indicators
+
+## Recovery Strategies
+
+1. **Understanding Gaps**
+   - Return to last confirmed understanding
+   - Use simpler examples
+   - Break down concepts
+   - Provide targeted practice
+   - Build confidence through success
+
+2. **Misconceptions**
+   - Address immediately but gently
+   - Use counterexamples
+   - Guide self-correction
+   - Reinforce correct understanding
+   - Track resolution
+
+## Response Generation Rules
+
+1. **Question Formation**
+   - Never ask yes/no questions
+   - Focus on process explanation
+   - Encourage prediction
+   - Build on previous responses
+   - Guide discovery naturally
+
+2. **Feedback Design**
+
+   ```typescript
+   interface TeachingFeedback {
+     type: 'guidance' | 'validation' | 'correction';
+     content: string;
+     nextStep: string;
+     scaffolding?: string[];
+   }
+   ```
+
+## Accessibility Implementation
+
+1. **ARIA Landmarks and Roles**
+
+   ```typescript
+   // Main tutorial layout
+   interface AccessibleLayout {
+     regions: {
+       navigation: "complementary" | "navigation";
+       tutorial: "main";
+       responses: "complementary";
+     };
+     landmarks: {
+       milestones: "region";
+       chat: "log";
+       responses: "form";
+     };
+   }
+
+   // Example implementation
+   <nav role="navigation" aria-label="Learning milestones">
+     <MilestonesPanel />
+   </nav>
+   <main role="main" aria-live="polite">
+     <ChatArea />
+   </main>
+   <aside role="complementary" aria-label="Response options">
+     <ResponsePanel />
+   </aside>
+   ```
+
+2. **Dynamic Content Updates**
+
+   ```typescript
+   // Chat message structure
+   interface ChatMessage {
+     role: "tutor" | "student";
+     content: string;
+     ariaLabel: string;
+     ariaLive: "off" | "polite" | "assertive";
+   }
+
+   // Implementation example
+   <div 
+     role="log" 
+     aria-label="Tutorial conversation"
+     aria-live="polite"
+   >
+     {messages.map(message => (
+       <div 
+         role="article"
+         aria-label={`${message.role} message: ${message.ariaLabel}`}
+       >
+         {message.content}
+       </div>
+     ))}
+   </div>
+   ```
+
+3. **Interactive Elements**
+
+   ```typescript
+   // Response option component
+   interface ResponseOption {
+     id: string;
+     content: string;
+     persona: string;
+     ariaPressed?: boolean;
+     ariaExpanded?: boolean;
+     ariaControls?: string;
+   }
+
+   // Implementation example
+   <button
+     role="button"
+     aria-haspopup="dialog"
+     aria-expanded={isExpanded}
+     aria-pressed={isSelected}
+     aria-controls={`response-${id}`}
+   >
+     <span className="sr-only">{persona} responds:</span>
+     {content}
+   </button>
+   ```
+
+4. **Progress Tracking**
+
+   ```typescript
+   // Milestone structure
+   interface AccessibleMilestone {
+     id: string;
+     text: string;
+     isComplete: boolean;
+     ariaLabel: string;
+   }
+
+   // Implementation example
+   <div 
+     role="list" 
+     aria-label="Learning progress"
+   >
+     {milestones.map(milestone => (
+       <div 
+         role="listitem"
+         aria-current={milestone.isComplete ? "true" : undefined}
+         aria-label={`${milestone.text}: ${
+           milestone.isComplete ? "completed" : "in progress"
+         }`}
+       >
+         {milestone.text}
+       </div>
+     ))}
+   </div>
+   ```
+
+5. **Focus Management**
+
+   ```typescript
+   // Focus control
+   interface FocusState {
+     currentFocus: string;
+     lastInteraction: string;
+     returnPoint?: string;
+   }
+
+   // Implementation helpers
+   const FocusManager = {
+     trapFocus: (containerId: string) => void;
+     returnFocus: () => void;
+     announceChange: (message: string) => void;
+   };
+
+   // Example usage
+   useEffect(() => {
+     if (newMessage) {
+       FocusManager.announceChange("New message available");
+       if (isUserResponse) {
+         FocusManager.trapFocus("response-options");
+       }
+     }
+   }, [newMessage]);
+   ```
+
+6. **Keyboard Navigation**
+
+   ```typescript
+   interface KeyboardControls {
+     shortcuts: {
+       nextResponse: "ArrowRight";
+       previousResponse: "ArrowLeft";
+       selectResponse: "Enter" | " ";
+       openHelp: "h";
+       showProgress: "p";
+     };
+     navigationOrder: string[];
+   }
+
+   // Implementation example
+   <div onKeyDown={handleKeyboardNavigation} tabIndex={0}>
+     <div role="navigation" aria-label="Response navigation">
+       <button aria-keyshortcuts="ArrowLeft">Previous</button>
+       <button aria-keyshortcuts="ArrowRight">Next</button>
+     </div>
+   </div>
+   ```
+
+7. **Error Prevention and Handling**
+
+   ```typescript
+   interface ErrorState {
+     type: "warning" | "error";
+     message: string;
+     corrective_action?: string;
+     aria: {
+       live: "assertive";
+       atomic: boolean;
+       relevant: "additions" | "all";
+     };
+   }
+
+   // Implementation example
+   <div 
+     role="alert" 
+     aria-live="assertive"
+     aria-atomic="true"
+   >
+     <p>{error.message}</p>
+     {error.corrective_action && (
+       <p aria-label="Suggested fix">{error.corrective_action}</p>
+     )}
+   </div>
+   ```
+
+8. **Screen Reader Optimization**
+
+   ```typescript
+   // Hidden text for context
+   const ScreenReaderText = {
+     visualContexts: {
+       arraySplit: "Array is being split into two parts",
+       arrayMerge: "Arrays are being merged in sorted order",
+       comparison: "Comparing elements",
+     },
+     stateChanges: {
+       milestoneComplete: (name: string) => 
+         `Milestone completed: ${name}`,
+       newMessage: "New message in chat",
+       optionsAvailable: "New response options available",
+     },
+   };
+
+   // Implementation example
+   <span className="sr-only" aria-live="polite">
+     {ScreenReaderText.visualContexts.arraySplit}
+   </span>
+   ```
+
+9. **Responsive Interaction**
+
+   ```typescript
+   interface ResponsiveState {
+     viewport: {
+       size: "small" | "medium" | "large";
+       orientation: "portrait" | "landscape";
+     };
+     ariaAdjustments: {
+       labelledby: string[];
+       describedby: string[];
+     };
+   }
+
+   // Implementation example
+   <div 
+     aria-labelledby={
+       viewport.size === "small" 
+         ? "compact-label" 
+         : "full-label"
+     }
+     aria-describedby={
+       viewport.size === "small"
+         ? "compact-desc"
+         : "full-desc"
+     }
+   >
+     {content}
+   </div>
+   ```
+
+## Web Standards Compliance
+
+1. **Document Structure**
+   - Proper heading hierarchy (h1-h6)
+   - Semantic HTML elements
+   - Meaningful element sequence
+   - Skip navigation links
+   - Proper section labeling
+
+2. **Interactive Elements**
+   - Sufficient touch targets (minimum 44x44px)
+   - Clear focus indicators
+   - Appropriate hover states
+   - Proper button/link usage
+   - Form label associations
+
+3. **Content Requirements**
+   - Minimum contrast ratio: 4.5:1
+   - Text resizing support (up to 200%)
+   - No information conveyed by color alone
+   - Proper link underlines
+   - Clear error identification
+
+Remember: This implementation ensures our demo meets WCAG 2.1 Level AA standards while maintaining the interactive teaching experience.
+
+## Implementation Notes
+
+1. The AI tutor should maintain awareness of:
+   - Current milestone progress
+   - Student's demonstrated understanding
+   - Previous examples used
+   - Recovery points if needed
+   - Teaching phase requirements
+
+2. Response generation should:
+   - Match student's current level
+   - Build on previous successes
+   - Guide natural discovery
+   - Provide appropriate scaffolding
+   - Maintain forward momentum
+
+3. Understanding verification must:
+   - Use concrete examples
+   - Require active demonstration
+   - Check prediction accuracy
+   - Validate genuine comprehension
+   - Track milestone achievements
+
+4. IMPORTANT: PLEASE DEVIATE FROM THE ABOVE GUIDELINES AS APPROPRIATE. THESE ARE MEANT TO BE ITERATIVE AND NOT SET IN STONE.

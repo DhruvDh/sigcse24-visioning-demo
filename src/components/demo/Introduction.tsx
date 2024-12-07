@@ -4,6 +4,27 @@ import { useDemoStore } from "../../lib/store/demoStore";
 import { clsx } from "clsx";
 import { MotionDiv, containerAnimation, itemAnimation } from "../ui/Motion";
 
+type DemoState = 
+  | "welcome"
+  | "nameInput"
+  | "teachingQuestion"
+  | "thankYouTeaching"
+  | "syntheticQuestion"
+  | "complete"
+  | "mergeSort";
+
+const isDemoState = (state: string): state is DemoState => {
+  return [
+    "welcome",
+    "nameInput", 
+    "teachingQuestion",
+    "thankYouTeaching",
+    "syntheticQuestion",
+    "complete",
+    "mergeSort"
+  ].includes(state);
+};
+
 export const ArrowIcon = () => (
   <svg
     className="ml-2 inline-block"
@@ -72,7 +93,13 @@ export const Introduction = () => {
   };
 
   const renderPromptSection = () => {
-    if (state.matches("nameInput")) {
+    const currentState = typeof state.value === 'string' 
+      ? state.value 
+      : Object.keys(state.value)[0];
+
+    if (!isDemoState(currentState)) return null;
+
+    if (currentState === "nameInput") {
       return (
         <>
           <BodyLarge className="text-foreground max-w-3xl mb-8">
@@ -86,9 +113,9 @@ export const Introduction = () => {
             placeholder="Enter your name..."
             className={clsx(
               "w-full px-8 py-5 text-xl mb-12",
-              "border-2 border-primary rounded-lg",
+              "border-2 border-[#D97757] rounded-lg",
               "font-sans placeholder-gray-400",
-              "focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent",
+              "focus:outline-none focus:ring-2 focus:ring-[#D97757] focus:border-transparent",
               "transition-all duration-200",
               "bg-background"
             )}
@@ -97,7 +124,7 @@ export const Introduction = () => {
       );
     }
 
-    if (state.matches("teachingQuestion")) {
+    if (currentState === "teachingQuestion") {
       return (
         <>
           <BodyLarge className="text-foreground max-w-3xl mb-8">
@@ -127,7 +154,7 @@ export const Introduction = () => {
       );
     }
 
-    if (state.matches("thankYouTeaching")) {
+    if (currentState === "thankYouTeaching") {
       return (
         <MotionDiv
           initial={{ opacity: 0, y: 20 }}
@@ -144,7 +171,7 @@ export const Introduction = () => {
       );
     }
 
-    if (state.matches("syntheticQuestion")) {
+    if (currentState === "syntheticQuestion") {
       return (
         <>
           <BodyLarge className="text-foreground max-w-3xl mb-8">
@@ -175,7 +202,7 @@ export const Introduction = () => {
       );
     }
 
-    if (state.matches("welcome")) {
+    if (currentState === "welcome") {
       return previousSession && (
         <div className="fixed bottom-8 left-8 animate-fade-in">
           <button
@@ -238,28 +265,49 @@ export const Introduction = () => {
   };
 
   const handleSkip = () => {
-    if (state.matches("nameInput")) {
-      send({ type: "SKIP_NAME" });
-    } else if (state.matches("teachingQuestion")) {
-      send({
-        type: "SUBMIT_TEACHING_RESPONSE",
-        response: "",
-      });
-    } else if (state.matches("syntheticQuestion")) {
-      send({
-        type: "SUBMIT_SYNTHETIC_RESPONSE",
-        response: "",
-      });
+    const currentState = typeof state.value === 'string' 
+      ? state.value 
+      : Object.keys(state.value)[0];
+
+    if (!isDemoState(currentState)) return;
+
+    switch (currentState) {
+      case "nameInput":
+        send({ type: "SKIP_NAME" });
+        break;
+      case "teachingQuestion":
+        send({
+          type: "SUBMIT_TEACHING_RESPONSE",
+          response: "",
+        });
+        break;
+      case "syntheticQuestion":
+        setIsSubmitting(true);
+        send({
+          type: "SUBMIT_SYNTHETIC_RESPONSE",
+          response: "",
+        });
+        break;
     }
   };
 
   const handleContinue = () => {
-    if (state.matches("nameInput")) {
-      handleSubmitName();
-    } else if (state.matches("teachingQuestion")) {
-      handleSubmitTeaching();
-    } else if (state.matches("syntheticQuestion")) {
-      handleSubmitSynthetic();
+    const currentState = typeof state.value === 'string' 
+      ? state.value 
+      : Object.keys(state.value)[0];
+
+    if (!isDemoState(currentState)) return;
+
+    switch (currentState) {
+      case "nameInput":
+        handleSubmitName();
+        break;
+      case "teachingQuestion":
+        handleSubmitTeaching();
+        break;
+      case "syntheticQuestion":
+        handleSubmitSynthetic();
+        break;
     }
   };
 
@@ -273,7 +321,7 @@ export const Introduction = () => {
           {...itemAnimation}
           transition={{ delay: 0.2, duration: 0.6 }}
         >
-          <H1 className="text-8xl md:text-9xl lg:text-[10rem] mb-4 font-serif tracking-tight">
+          <H1 className="text-8xl md:text-9xl lg:text-[10rem] mb-4 font-serif tracking-tight text-[#1F2937]">
             Welcome!
           </H1>
         </MotionDiv>
@@ -283,7 +331,7 @@ export const Introduction = () => {
           transition={{ delay: 0.4, duration: 0.6 }}
         >
           <div className="text-2xl md:text-3xl mb-12">
-            <span className="text-muted italic font-sans">
+            <span className="text-slate-500 italic font-sans">
               To a concise visioning activity.
             </span>
           </div>
@@ -293,7 +341,7 @@ export const Introduction = () => {
           {...itemAnimation}
           transition={{ delay: 0.6, duration: 0.6 }}
         >
-          {(state.matches("welcome") || state.matches("nameInput")) && (
+          {(state.value === "welcome" || state.value === "nameInput") && (
             <BodyLarge className="text-foreground max-w-3xl mb-16">
               We encourage and invite interpretations of two questions for the
               future. Click &ldquo;Let&apos;s go!&rdquo; to begin.
@@ -306,7 +354,7 @@ export const Introduction = () => {
           {...itemAnimation}
           transition={{ delay: 0.8, duration: 0.6 }}
         >
-          {state.matches("welcome") ? (
+          {state.value === "welcome" ? (
             <div className="flex items-center gap-4">
               {previousSession && (
                 <MotionDiv
@@ -342,9 +390,10 @@ export const Introduction = () => {
                 className={clsx(
                   "px-10 py-5 rounded-lg",
                   "font-sans font-medium text-xl",
-                  "bg-primary text-primary-foreground",
+                  "bg-[#D97757] text-white",
+                  "hover:bg-[#C56646]",
                   "transition-colors duration-200",
-                  "focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2",
+                  "focus:outline-none focus:ring-2 focus:ring-[#D97757] focus:ring-offset-2",
                   "flex items-center"
                 )}
               >
@@ -361,7 +410,7 @@ export const Introduction = () => {
                   className={clsx(
                     "px-10 py-5 rounded-lg",
                     "font-sans font-medium text-xl",
-                    "bg-gray-100 text-muted",
+                    "bg-gray-100 text-gray-500",
                     "hover:bg-gray-200",
                     "transition-colors duration-200",
                     "focus:outline-none focus:ring-2 focus:ring-gray-300 focus:ring-offset-2",
@@ -377,9 +426,10 @@ export const Introduction = () => {
                   className={clsx(
                     "px-10 py-5 rounded-lg",
                     "font-sans font-medium text-xl",
-                    "bg-primary text-primary-foreground",
+                    "bg-[#D97757] text-white",
+                    "hover:bg-[#C56646]",
                     "transition-colors duration-200",
-                    "focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2",
+                    "focus:outline-none focus:ring-2 focus:ring-[#D97757] focus:ring-offset-2",
                     "flex items-center",
                     isSubmitting && "opacity-50 cursor-not-allowed"
                   )}

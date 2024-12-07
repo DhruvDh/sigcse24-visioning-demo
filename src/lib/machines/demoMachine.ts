@@ -17,6 +17,7 @@ type DemoContext = {
       text: string;
       isComplete: boolean;
     }>;
+    systemMessage?: string;
   };
 };
 
@@ -43,6 +44,10 @@ type DemoEvent =
   | {
       type: "UPDATE_OPTIONS";
       newOptions: Array<{ persona: string; response: string }>;
+    }
+  | {
+      type: "UPDATE_SYSTEM_MESSAGE";
+      systemMessage: string;
     };
 
 export const demoMachine = setup({
@@ -70,6 +75,7 @@ export const demoMachine = setup({
           { id: 3, text: "Grasping recursive nature", isComplete: false },
           { id: 4, text: "Analyzing time complexity", isComplete: false },
         ],
+        systemMessage: undefined
       };
     },
     addSelectedResponse: (
@@ -130,6 +136,11 @@ export const demoMachine = setup({
         }
       } catch (error) {
         console.error('Error sending responses:', error);
+      }
+    },
+    updateSystemMessage: ({ context }, { systemMessage }: { systemMessage: string }) => {
+      if (context.mergeSort) {
+        context.mergeSort.systemMessage = systemMessage;
       }
     },
   },
@@ -236,6 +247,23 @@ export const demoMachine = setup({
       },
     },
     mergeSort: {
+      entry: [
+        ({ context }) => {
+          if (!context.mergeSort) {
+            context.mergeSort = {
+              currentStep: 0,
+              selectedResponses: [],
+              milestones: [
+                { id: 1, text: "Understanding the divide step", isComplete: false },
+                { id: 2, text: "Understanding the merge step", isComplete: false },
+                { id: 3, text: "Grasping recursive nature", isComplete: false },
+                { id: 4, text: "Analyzing time complexity", isComplete: false },
+              ],
+              systemMessage: undefined
+            };
+          }
+        }
+      ],
       on: {
         SELECT_RESPONSE: {
           actions: [
@@ -257,6 +285,12 @@ export const demoMachine = setup({
         UPDATE_OPTIONS: {
           // Handle updating available response options
         },
+        UPDATE_SYSTEM_MESSAGE: {
+          actions: [{ 
+            type: "updateSystemMessage",
+            params: ({ event }) => ({ systemMessage: event.systemMessage })
+          }]
+        }
       },
     },
   },

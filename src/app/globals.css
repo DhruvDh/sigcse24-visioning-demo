@@ -2,20 +2,42 @@
 @tailwind components;
 @tailwind utilities;
 
-:root {
-  --background: rgb(242,241,234);
-  --foreground: #171717;
-  --primary: rgb(217,119,87);
-  --primary-foreground: rgb(242,241,234);
-  --muted: #6b7280;
-}
-
-@media (prefers-color-scheme: dark) {
+@layer base {
   :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+    --background: #FFFFFF;
+    --foreground: #1e293b;
+    --primary: #D97757;
+    --primary-foreground: #FFFFFF;
+    --muted: #64748b;
+    --muted-foreground: #64748b;
   }
 }
+
+/* Remove dark mode override to keep consistent colors */
+@media (prefers-color-scheme: dark) {
+  :root {
+    --background: #FFFFFF;
+    --foreground: #1e293b;
+    --primary: #D97757;
+    --primary-foreground: #FFFFFF;
+    --muted: #64748b;
+    --muted-foreground: #64748b;
+  }
+}
+
+/* Additional code block syntax highlighting */
+pre code {
+  color: #1e293b !important; /* slate-800 */
+  background-color: transparent !important;
+  border: none !important;
+  padding: 0 !important;
+}
+
+pre code .keyword { color: #7c3aed; } /* violet-600 */
+pre code .string { color: #059669; } /* emerald-600 */
+pre code .comment { color: #64748b; } /* slate-500 */
+pre code .function { color: #2563eb; } /* blue-600 */
+pre code .number { color: #db2777; } /* pink-600 */
 
 body {
   color: var(--foreground);
@@ -42,3 +64,4 @@ body {
     --tw-ring-color: var(--primary);
   }
 }
+
