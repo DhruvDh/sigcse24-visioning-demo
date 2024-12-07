@@ -5,17 +5,20 @@ import { Introduction } from "../components/demo/Introduction";
 import { Complete } from "../components/demo/mergeSort/Complete";
 import { MergeSortLayout } from "../components/demo/mergeSort/MergeSortLayout";
 import { useDemoStore } from "../lib/store/demoStore";
-import type { StateValue as XStateValue } from "xstate";
 
-// Add type for state values
-type StateValue =
-  | "welcome"
-  | "nameInput"
-  | "teachingQuestion"
-  | "thankYouTeaching"
-  | "syntheticQuestion"
-  | "complete"
-  | "mergeSort";
+// Define the state schema type that matches your machine's states
+type DemoStateValue = {
+  welcome: object;
+  nameInput: object;
+  teachingQuestion: object;
+  thankYouTeaching: object;
+  syntheticQuestion: object;
+  complete: object;
+  mergeSort: { active: object };
+};
+
+// Simplified state value type for matching
+type StateValue = keyof DemoStateValue;
 
 export default function Home() {
   const { state, loadContent, isContentLoading } = useDemoStore();
@@ -23,6 +26,9 @@ export default function Home() {
   useEffect(() => {
     loadContent();
   }, [loadContent]);
+
+  console.log('Current state:', state.value);
+  console.log('Current context:', state.context);
 
   // Helper function to determine which component to render
   const renderContent = () => {
@@ -34,9 +40,16 @@ export default function Home() {
       );
     }
 
-    // Properly typed state matching
-    const matches = (value: StateValue) =>
-      state.matches(value);
+    // Type-safe state matching that handles compound states
+    const matches = (value: StateValue): boolean => {
+      if (typeof state.value === 'string') {
+        return state.value === value;
+      }
+      // Handle compound states
+      return value in state.value;
+    };
+
+    console.log('Matches mergeSort:', matches("mergeSort"));
 
     // States handled by Introduction component
     if (

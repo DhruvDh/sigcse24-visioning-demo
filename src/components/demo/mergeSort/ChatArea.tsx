@@ -89,10 +89,10 @@ export const ChatArea: FC = () => {
   const { sendMessage } = useLLMChat({
     onMessage: (content) => {
       const existingMessages = state.context.mergeSort?.messages ?? [];
-      const lastMessage = existingMessages[existingMessages.length - 1];
-
-      if (!lastMessage || lastMessage.role !== "assistant") {
-        // Create new assistant message
+      
+      if (existingMessages.length === 0 || !state.context.mergeSort?.isStreaming) {
+        // Start new message
+        send({ type: "START_STREAMING" });
         send({
           type: "UPDATE_MESSAGES",
           messages: [
@@ -106,24 +106,30 @@ export const ChatArea: FC = () => {
           ],
         });
       } else {
-        // Update existing assistant message
+        // Append to existing message
         send({
           type: "UPDATE_MESSAGES",
-          messages: existingMessages.map((msg) =>
-            msg.id === lastMessage.id
-              ? { ...msg, content: msg.content + content }
-              : msg
-          ),
+          messages: [
+            ...existingMessages.slice(0, -1),
+            {
+              id: existingMessages[existingMessages.length - 1].id,
+              role: "assistant",
+              content: (state.context.mergeSort?.streamingMessage ?? "") + content,
+              persona: "Tutor",
+            },
+          ],
         });
       }
     },
     onComplete: () => {
       setIsTyping(false);
+      send({ type: "FINISH_STREAMING" });
       send({ type: "CHECK_MILESTONES" });
     },
     onError: (error) => {
       console.error("Chat error:", error);
       setIsTyping(false);
+      send({ type: "FINISH_STREAMING" });
     },
   });
 

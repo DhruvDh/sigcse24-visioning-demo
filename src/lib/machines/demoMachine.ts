@@ -1,4 +1,4 @@
-import { setup } from "xstate";
+import { setup, assign, assertEvent } from "xstate";
 
 type Milestone = {
   id: string;
@@ -21,19 +21,16 @@ type DemoContext = {
     }>;
     milestones: Milestone[];
     systemMessage?: string;
-    messages: Array<{
-      id: number;
-      role: "system" | "user" | "assistant";
-      content: string;
-      persona?: string;
-    }>;
+    messages: Message[];
+    streamingMessage?: string;
+    isStreaming: boolean;
   };
 };
 
 type DemoEvent =
   | { type: "BEGIN" }
-  | { 
-      type: "SUBMIT_NAME"; 
+  | {
+     type: "SUBMIT_NAME";
       name: string;
       responses?: {
         teachLLMs: string;
@@ -54,176 +51,215 @@ type DemoEvent =
       type: "UPDATE_OPTIONS";
       newOptions: Array<{ persona: string; response: string }>;
     }
-  | {
-      type: "UPDATE_SYSTEM_MESSAGE";
-      systemMessage: string;
+  | { type: "UPDATE_SYSTEM_MESSAGE"; systemMessage: string }
+  | { 
+      type: "UPDATE_MESSAGES"; 
+      messages: Message[];
     }
-  | {
-      type: "UPDATE_MESSAGES";
-      messages: Array<{
-        id: number;
-        role: "system" | "user" | "assistant";
-        content: string;
-        persona?: string;
-      }>;
-    }
-  | { type: "CHECK_MILESTONES" };
+  | { type: "CHECK_MILESTONES" }
+  | { type: "START_STREAMING" }
+  | { type: "APPEND_TOKEN"; content: string }
+  | { type: "FINISH_STREAMING" };
+
+type Message = {
+  id: number;
+  role: "system" | "user" | "assistant";
+  content: string;
+  persona?: string;
+};
 
 const mergeSortMilestones: Milestone[] = [
   {
-    id: 'inefficiency_discovery',
-    text: 'Understanding Sorting Inefficiency',
-    description: 'Recognizing how comparison-based sorting becomes impractical as input size grows',
-    isComplete: false
+    id: "inefficiency_discovery",
+    text: "Understanding Sorting Inefficiency",
+    description:
+      "Recognizing how comparison-based sorting becomes impractical as input size grows",
+    isComplete: false,
   },
   {
-    id: 'splitting_insight',
-    text: 'Discovering Divide-and-Conquer',
-    description: 'Understanding how breaking the problem into smaller parts can help reduce complexity',
-    isComplete: false
+    id: "splitting_insight",
+    text: "Discovering Divide-and-Conquer",
+    description:
+      "Understanding how breaking the problem into smaller parts can help reduce complexity",
+    isComplete: false,
   },
   {
-    id: 'merging_development',
-    text: 'Understanding Systematic Merging',
-    description: 'Discovering how to systematically combine sorted sequences',
-    isComplete: false
+    id: "merging_development",
+    text: "Understanding Systematic Merging",
+    description: "Discovering how to systematically combine sorted sequences",
+    isComplete: false,
   },
   {
-    id: 'recursive_pattern',
-    text: 'Grasping Recursive Nature',
-    description: 'Understanding how the same process applies at each level',
-    isComplete: false
+    id: "recursive_pattern",
+    text: "Grasping Recursive Nature",
+    description: "Understanding how the same process applies at each level",
+    isComplete: false,
   },
   {
-    id: 'efficiency_analysis',
-    text: 'Comprehending Efficiency',
-    description: 'Understanding why merge sort achieves O(n log n) complexity',
-    isComplete: false
-  }
+    id: "efficiency_analysis",
+    text: "Comprehending Efficiency",
+    description: "Understanding why merge sort achieves O(n log n) complexity",
+    isComplete: false,
+  },
 ];
-
-// Add state type definition
-type DemoStates = {
-  welcome: {};
-  nameInput: {};
-  teachingQuestion: {};
-  thankYouTeaching: {};
-  syntheticQuestion: {};
-  complete: {};
-  mergeSort: {};
-};
 
 export const demoMachine = setup({
   types: {
     context: {} as DemoContext,
     events: {} as DemoEvent,
-    // Add states type
-    states: {} as DemoStates,
+    input: {} as unknown as void,
   },
+  guards: {},
+  delays: {},
+  actors: {},
   actions: {
-    setName: ({ context }, event: { name: string }) => {
-      context.name = event.name;
-    },
-    setTeachingResponse: ({ context }, event: { response: string }) => {
-      context.responses.teachLLMs = event.response;
-    },
-    setSyntheticResponse: ({ context }, event: { response: string }) => {
-      context.responses.syntheticStudents = event.response;
-    },
-    initializeMergeSort: ({ context }) => {
-      context.mergeSort = {
+    setName: assign(({ event }) => {
+      assertEvent(event, "SUBMIT_NAME");
+      return { name: event.name };
+    }),
+    setTeachingResponse: assign(({ context, event }) => {
+      assertEvent(event, "SUBMIT_TEACHING_RESPONSE");
+      return {
+        responses: {
+          ...context.responses,
+          teachLLMs: event.response,
+        },
+      };
+    }),
+    setSyntheticResponse: assign(({ context, event }) => {
+      assertEvent(event, "SUBMIT_SYNTHETIC_RESPONSE");
+      return {
+        responses: {
+          ...context.responses,
+          syntheticStudents: event.response,
+        },
+      };
+    }),
+    initializeMergeSort: assign({
+      mergeSort: () => ({
         currentStep: 0,
         selectedResponses: [],
         milestones: mergeSortMilestones,
         messages: [],
-      };
-    },
-    addSelectedResponse: (
-      { context },
-      event: { persona: string; response: string }
-    ) => {
-      if (context.mergeSort) {
-        context.mergeSort.selectedResponses.push({
-          persona: event.persona,
-          response: event.response,
-        });
-      }
-    },
-    updateMilestones: ({ context }, event: { milestoneId: string }) => {
-      if (context.mergeSort) {
-        const milestone = context.mergeSort.milestones.find(
-          (m) => m.id === event.milestoneId
-        );
-        if (milestone) {
-          milestone.isComplete = true;
-        }
-      }
-    },
-    sendResponsesToEndpoint: async ({ context }) => {
-      const isEmptyResponses = 
-        !context.responses.teachLLMs.trim() && 
+        isStreaming: false,
+        streamingMessage: ""
+      })
+    }),
+    sendResponsesToEndpoint: ({ context }) => {
+      const isEmptyResponses =
+        !context.responses.teachLLMs.trim() &&
         !context.responses.syntheticStudents.trim();
-      
-      if (isEmptyResponses || context.name === "Anon") {
-        return;
-      }
 
-      try {
-        const response = await fetch('https://near-duck-52.deno.dev/responses', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            name: context.name,
-            responses: context.responses,
-            timestamp: Date.now()
-          })
+      if (isEmptyResponses || context.name === "Anon") return;
+
+      void fetch("https://near-duck-52.deno.dev/responses", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          name: context.name,
+          responses: context.responses,
+          timestamp: Date.now(),
+        }),
+      })
+        .then(async (response) => {
+          if (!response.ok) {
+            console.error("Failed to store responses:", await response.text());
+          }
+
+          if (context.name !== "Anon") {
+            const storageData = {
+              name: context.name,
+              responses: context.responses,
+              timestamp: Date.now(),
+            };
+            localStorage.setItem(
+              "previousResponses",
+              JSON.stringify(storageData)
+            );
+            console.log("Stored in localStorage:", storageData);
+          }
+        })
+        .catch((error) => {
+          console.error("Error sending responses:", error);
         });
-
-        if (!response.ok) {
-          console.error('Failed to store responses:', await response.text());
-        }
-        
-        if (context.name !== "Anon") {
-          const storageData = {
-            name: context.name,
-            responses: context.responses,
-            timestamp: Date.now()
-          };
-          localStorage.setItem('previousResponses', JSON.stringify(storageData));
-          console.log('Stored in localStorage:', storageData);
-        }
-      } catch (error) {
-        console.error('Error sending responses:', error);
-      }
     },
-    updateSystemMessage: ({ context }, { systemMessage }: { systemMessage: string }) => {
-      if (context.mergeSort) {
-        context.mergeSort.systemMessage = systemMessage;
-      }
-    },
-    updateMessages: ({ context }, { messages }) => {
-      if (context.mergeSort) {
-        context.mergeSort.messages = messages;
-      }
-    },
-    checkMilestones: ({ context }) => {
-      if (!context.mergeSort) return;
+    updateMessages: assign(({ context, event }) => {
+      if (event.type !== "UPDATE_MESSAGES") return {};
       
-      const lastMessage = context.mergeSort.messages[context.mergeSort.messages.length - 1];
-      if (!lastMessage || lastMessage.role !== 'assistant') return;
+      const currentMergeSort = context.mergeSort ?? {
+        currentStep: 0,
+        selectedResponses: [],
+        milestones: mergeSortMilestones,
+        messages: [],
+        isStreaming: false,
+        streamingMessage: ""
+      };
 
-      // Check for milestone markers
-      const milestoneMatch = lastMessage.content.match(/MILESTONE\[([\w_]+)\]/);
-      if (milestoneMatch) {
-        const milestoneId = milestoneMatch[1];
-        const milestone = context.mergeSort.milestones.find(m => m.id === milestoneId);
-        if (milestone) {
-          milestone.isComplete = true;
-        }
+      if (!currentMergeSort.isStreaming) {
+        return {
+          mergeSort: {
+            ...currentMergeSort,
+            messages: event.messages
+          }
+        };
       }
-    }
+
+      const existingMessages = currentMergeSort.messages;
+      const lastMessage = existingMessages[existingMessages.length - 1];
+      const newToken = event.messages[event.messages.length - 1]?.content ?? "";
+      
+      if (!lastMessage || lastMessage.role !== "assistant") {
+        return {
+          mergeSort: {
+            ...currentMergeSort,
+            streamingMessage: newToken,
+            messages: [
+              ...existingMessages,
+              {
+                id: Date.now(),
+                role: "assistant" as const,
+                content: newToken,
+                persona: "Tutor"
+              }
+            ]
+          }
+        };
+      }
+
+      const newContent = (currentMergeSort.streamingMessage ?? "") + newToken;
+
+      return {
+        mergeSort: {
+          ...currentMergeSort,
+          streamingMessage: newContent,
+          messages: [
+            ...existingMessages.slice(0, -1),
+            {
+              id: lastMessage.id,
+              role: "assistant" as const,
+              content: newContent,
+              persona: "Tutor"
+            }
+          ]
+        }
+      };
+    }),
+    startStreaming: assign(({ context }) => ({
+     mergeSort: {
+        ...context.mergeSort!,
+        isStreaming: true,
+        streamingMessage: ""
+      }
+    })),
+    finishStreaming: assign(({ context }) => ({
+     mergeSort: {
+        ...context.mergeSort!,
+        isStreaming: false,
+        streamingMessage: ""
+      }
+    }))
   },
 }).createMachine({
   id: "demo",
@@ -234,6 +270,14 @@ export const demoMachine = setup({
       teachLLMs: "",
       syntheticStudents: "",
     },
+    mergeSort: {
+      currentStep: 0,
+      selectedResponses: [],
+      milestones: mergeSortMilestones,
+      messages: [],
+      isStreaming: false,
+      streamingMessage: ""
+    }
   },
   states: {
     welcome: {
@@ -242,26 +286,21 @@ export const demoMachine = setup({
         SUBMIT_NAME: {
           target: "quickContinue",
           actions: [
-            {
-              type: "setName",
-              params: ({ event }) => ({ name: event.name }),
-            },
-          ],
+            "setName",
+            assign(({ event }) => {
+              if (event.type !== "SUBMIT_NAME" || !event.responses) return {};
+              return {
+                responses: event.responses
+              };
+            })
+          ]
         },
       },
     },
     quickContinue: {
-      entry: [
-        ({ context, event }) => {
-          if (event.type === "SUBMIT_NAME" && event.responses) {
-            context.responses = event.responses;
-          }
-        },
-      ],
       after: {
         100: {
-          target: "mergeSort",
-          actions: [{ type: "initializeMergeSort" }]
+          target: "mergeSort"
         },
       },
     },
@@ -269,21 +308,11 @@ export const demoMachine = setup({
       on: {
         SUBMIT_NAME: {
           target: "teachingQuestion",
-          actions: [
-            {
-              type: "setName",
-              params: ({ event }) => ({ name: event.name }),
-            },
-          ],
+          actions: "setName",
         },
         SKIP_NAME: {
           target: "teachingQuestion",
-          actions: [
-            {
-              type: "setName",
-              params: () => ({ name: "Anon" }),
-            },
-          ],
+          actions: assign({ name: "Anon" }),
         },
       },
     },
@@ -291,12 +320,7 @@ export const demoMachine = setup({
       on: {
         SUBMIT_TEACHING_RESPONSE: {
           target: "thankYouTeaching",
-          actions: [
-            {
-              type: "setTeachingResponse",
-              params: ({ event }) => ({ response: event.response }),
-            },
-          ],
+          actions: "setTeachingResponse",
         },
       },
     },
@@ -309,13 +333,7 @@ export const demoMachine = setup({
       on: {
         SUBMIT_SYNTHETIC_RESPONSE: {
           target: "complete",
-          actions: [
-            {
-              type: "setSyntheticResponse",
-              params: ({ event }) => ({ response: event.response }),
-            },
-            { type: "sendResponsesToEndpoint" }
-          ],
+          actions: ["setSyntheticResponse", "sendResponsesToEndpoint"],
         },
       },
     },
@@ -323,59 +341,96 @@ export const demoMachine = setup({
       on: {
         CONTINUE: {
           target: "mergeSort",
-          actions: [{ type: "initializeMergeSort" }],
+          actions: "initializeMergeSort",
         },
       },
     },
     mergeSort: {
-      entry: [
-        ({ context }) => {
-          if (!context.mergeSort) {
-            context.mergeSort = {
-              currentStep: 0,
-              selectedResponses: [],
-              milestones: mergeSortMilestones,
-              messages: [],
-            };
+      entry: "initializeMergeSort",
+      initial: "idle",
+      states: {
+        idle: {
+          on: {
+            START_STREAMING: "streaming",
+            UPDATE_MESSAGES: {
+              actions: "updateMessages"
+            }
+          }
+        },
+        streaming: {
+          entry: "startStreaming",
+          on: {
+            UPDATE_MESSAGES: {
+              actions: "updateMessages"
+            },
+            FINISH_STREAMING: {
+              target: "idle",
+              actions: "finishStreaming"
+            }
           }
         }
-      ],
+      },
       on: {
         SELECT_RESPONSE: {
-          actions: [
-            {
-              type: "addSelectedResponse",
-              params: ({ event }) => ({
-                persona: event.persona,
-                response: event.response,
-              }),
-            },
-            {
-              type: "updateMilestones",
-              params: ({ event }) => ({
-                milestoneId: event.milestoneId,
-              }),
-            },
-          ],
-        },
-        UPDATE_OPTIONS: {
-          // Handle updating available response options
+          actions: assign(({ context, event }) => {
+            assertEvent(event, "SELECT_RESPONSE");
+            if (!context.mergeSort) return {};
+            return {
+              mergeSort: {
+                ...context.mergeSort,
+                selectedResponses: [
+                  ...context.mergeSort.selectedResponses,
+                  {
+                    persona: event.persona,
+                    response: event.response,
+                  },
+                ],
+                milestones: context.mergeSort.milestones.map((m) =>
+                  m.id === event.milestoneId ? { ...m, isComplete: true } : m
+                ),
+              },
+            };
+          }),
         },
         UPDATE_SYSTEM_MESSAGE: {
-          actions: [{ 
-            type: "updateSystemMessage",
-            params: ({ event }) => ({ systemMessage: event.systemMessage })
-          }]
+          actions: assign(({ context, event }) => {
+            assertEvent(event, "UPDATE_SYSTEM_MESSAGE");
+            if (!context.mergeSort) return {};
+            return {
+              mergeSort: {
+                ...context.mergeSort,
+                systemMessage: event.systemMessage,
+              },
+            };
+          }),
         },
         UPDATE_MESSAGES: {
-          actions: [{ 
-            type: "updateMessages",
-            params: ({ event }) => ({ messages: event.messages })
-          }]
+          actions: "updateMessages"
         },
         CHECK_MILESTONES: {
-          actions: "checkMilestones"
-        }
+          actions: assign(({ context }) => {
+            if (!context.mergeSort) return {};
+            const messages = context.mergeSort.messages;
+            const lastMessage = messages[messages.length - 1];
+
+            if (!lastMessage || lastMessage.role !== "assistant") return {};
+
+            const milestoneMatch = lastMessage.content.match(
+              /MILESTONE\[([\w_]+)\]/
+            );
+            if (!milestoneMatch) return {};
+
+            const milestoneId = milestoneMatch[1];
+            return {
+              mergeSort: {
+                ...context.mergeSort,
+                milestones: context.mergeSort.milestones.map((m) =>
+                  m.id === milestoneId ? { ...m, isComplete: true } : m
+                ),
+              },
+            };
+          }),
+        },
       },
     },
   },
