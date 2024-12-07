@@ -11,6 +11,7 @@ import {
   fetchAndCache,
 } from "../../../lib/utils/contentCache";
 import { Spinner } from "../../ui/Spinner";
+import { ErrorDialog } from '../../ui/ErrorDialog';
 
 type DemoMessage = {
   id: number;
@@ -89,6 +90,7 @@ export const ChatArea: FC = () => {
   const [onboardingStep, setOnboardingStep] = useState(1);
   const [showOnboarding, setShowOnboarding] = useState(true);
   const [direction, setDirection] = useState(0);
+  const [error, setError] = useState<string | null>(null);
 
   const { sendMessage } = useLLMChat({
     onMessage: (content) => {
@@ -140,9 +142,10 @@ export const ChatArea: FC = () => {
   const handleStudentResponse = async (content: string) => {
     if (isTyping) return;
     setIsTyping(true);
+    setError(null);
 
     if (!llmInstructions || !lessonContent) {
-      console.error("System message not set!");
+      setError("System message not set - please try refreshing the page");
       setIsTyping(false);
       return;
     }
@@ -181,7 +184,9 @@ export const ChatArea: FC = () => {
     try {
       await sendMessage(messageToSend);
     } catch (error) {
-      console.error("Failed to send message:", error);
+      const errorMessage = error instanceof Error ? error.message : 'Failed to send message';
+      console.error('Failed to send message:', error);
+      setError(errorMessage);
       setIsTyping(false);
     }
   };
@@ -206,7 +211,9 @@ export const ChatArea: FC = () => {
           });
         }
       } catch (error) {
-        console.error("Error loading content:", error);
+        const errorMessage = error instanceof Error ? error.message : 'Failed to load content';
+        console.error('Error loading content:', error);
+        setError(errorMessage);
       }
     };
 
@@ -240,6 +247,10 @@ export const ChatArea: FC = () => {
 
   return (
     <div className="h-full flex flex-col">
+      <ErrorDialog 
+        error={error}
+        onClose={() => setError(null)}
+      />
       <AnimatePresence mode="wait" custom={direction}>
         {showOnboarding ? (
           <MotionDiv
@@ -343,7 +354,7 @@ export const ChatArea: FC = () => {
                       "max-w-[85%] rounded-2xl px-6 py-4",
                       message.role === "assistant" 
                         ? "bg-slate-50 border border-slate-200" 
-                        : "bg-[#C56646]",
+                        : "bg-[#C56646]/10border border-[#C56646]/20",
                       index === messages.length - 1 && "animate-fade-in"
                     )}>
                       <MarkdownContainer 
@@ -353,12 +364,11 @@ export const ChatArea: FC = () => {
                           message.role === "assistant" 
                             ? "prose-slate prose-p:font-serif" 
                             : [
-                                "prose-invert",
                                 "prose-p:font-serif",
-                                "!text-white",
-                                "[&_p]:text-white",
-                                "[&_*]:text-white",
-                                "prose-code:bg-white/10"
+                                "!text-gray-800",
+                                "[&_p]:text-gray-800",
+                                "[&_*]:text-gray-800",
+                                "prose-code:bg-[#C56646]/5"
                               ],
                           "whitespace-pre-wrap",
                           "prose-p:mb-4 prose-p:last:mb-0"

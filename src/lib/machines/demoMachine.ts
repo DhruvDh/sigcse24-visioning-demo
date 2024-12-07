@@ -113,6 +113,24 @@ export const mergeSortMilestones: Milestone[] = [
 const getRandomLevel = (levels: number[]) => 
   levels[Math.floor(Math.random() * levels.length)];
 
+// Add a biased random function that favors lower values
+const getBiasedRandomLevel = (levels: number[], bias: 'low' | 'high' = 'low') => {
+  // Create a weighted distribution
+  const weights = bias === 'low' 
+    ? levels.map((_, i) => levels.length - i) // Higher weights for lower values
+    : levels.map((_, i) => i + 1); // Higher weights for higher values
+  
+  const totalWeight = weights.reduce((sum, w) => sum + w, 0);
+  let random = Math.random() * totalWeight;
+  
+  for (let i = 0; i < levels.length; i++) {
+    random -= weights[i];
+    if (random <= 0) return levels[i];
+  }
+  
+  return levels[levels.length - 1];
+};
+
 const generateStudentTraits = () => {
   // Define possible levels for each trait
   const correctnessLevels = [1, 3];
@@ -121,11 +139,11 @@ const generateStudentTraits = () => {
   const attentionLevels = [1, 2, 3];
   const comprehensionLevels = [2, 3]; // Only 2 and 3 for comprehension
 
-  // Generate random levels
+  // Generate random levels with bias for conciseness and typing
   const traits = {
     correctness: getRandomLevel(correctnessLevels),
-    conciseness: getRandomLevel(concisenessLevels),
-    typingPersonality: getRandomLevel(typingPersonalityLevels),
+    conciseness: getBiasedRandomLevel(concisenessLevels, 'low'), // Bias towards lower values
+    typingPersonality: getBiasedRandomLevel(typingPersonalityLevels, 'low'), // Bias towards lower values
     attention: getRandomLevel(attentionLevels),
     comprehension: getRandomLevel(comprehensionLevels),
   };
@@ -529,7 +547,7 @@ Note: Generate only one response matching these traits. Include a name for the s
                       }));
 
                     if (validResponses.length === 0) {
-                      console.error('No valid responses received:', event.output);
+                      throw new Error('No valid responses received from the server');
                     }
 
                     return {
@@ -545,12 +563,17 @@ Note: Generate only one response matching these traits. Include a name for the s
               target: "idle",
               actions: [
                 ({ event }) => {
-                  console.error('Failed to generate synthetic responses:', event.error);
+                  const errorMessage = event.error instanceof Error 
+                    ? event.error.message 
+                    : 'Failed to generate synthetic responses';
+                  console.error(errorMessage, event.error);
+                  // You could also emit this to a global error handler or analytics
                 },
                 assign({
                   mergeSort: ({ context }) => ({
                     ...context.mergeSort!,
                     isLoadingSynthetic: false,
+                    syntheticResponses: [], // Clear any partial responses
                   }),
                 }),
               ],
