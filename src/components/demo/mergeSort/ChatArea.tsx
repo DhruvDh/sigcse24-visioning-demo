@@ -279,7 +279,7 @@ export const ChatArea: FC = () => {
   ]);
 
   return (
-    <div className="h-full flex flex-col">
+    <div className="h-screen flex flex-col">
       <ErrorDialog 
         error={error}
         onClose={() => setError(null)}
@@ -355,7 +355,7 @@ export const ChatArea: FC = () => {
           </MotionDiv>
         ) : (
           <MotionDiv
-            className="flex-1 overflow-y-auto p-6"
+            className="flex-1 min-h-0 overflow-y-auto p-6"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
@@ -422,7 +422,7 @@ export const ChatArea: FC = () => {
       <MotionDiv
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
-        className="border-t border-gray-200 p-6"
+        className="flex-shrink-0 border-t border-gray-200 p-6 max-h-[calc(100vh-330px)"
       >
         <div className="grid grid-cols-1 gap-4">
           {isLoadingSynthetic ? (

@@ -27,8 +27,8 @@ export default function Home() {
     loadContent();
   }, [loadContent]);
 
-  console.log('Current state:', state.value);
-  console.log('Current context:', state.context);
+  // console.log('Current state:', state.value);
+  // console.log('Current context:', state.context);
 
   // Helper function to determine which component to render
   const renderContent = () => {
@@ -49,7 +49,7 @@ export default function Home() {
       return value in state.value;
     };
 
-    console.log('Matches mergeSort:', matches("mergeSort"));
+    // console.log('Matches mergeSort:', matches("mergeSort"));
 
     // States handled by Introduction component
     if (

@@ -48,6 +48,7 @@ export function useLLMChat(options: UseLLMChatOptions = {}) {
         },
       });
 
+      console.log(JSON.stringify({content}));
       return content;
     } catch (error) {
       options.onError?.(error as Error);

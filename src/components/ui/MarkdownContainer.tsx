@@ -24,7 +24,7 @@ export function MarkdownContainer({
     // Only process content if it has changed or if streaming is complete
     if (content !== lastContentRef.current || (!isStreaming && processedContentRef.current === '')) {
       lastContentRef.current = content
-      processedContentRef.current = String.raw`${content}`
+      processedContentRef.current = content
       
       const parsedHtml = parseMarkdown(processedContentRef.current)
       setHtml(parsedHtml)

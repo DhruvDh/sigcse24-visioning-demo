@@ -189,9 +189,9 @@ export const useDemoStore = create<DemoStore>((set) => {
     instructions: string,
     lesson: string
   ): string => {
-    return String.raw`${instructions}`.replace(
+    return `${instructions}`.replace(
       "{{LESSON_CONTENT}}",
-      String.raw`${lesson}`
+      lesson
     );
   };
 
@@ -214,8 +214,8 @@ export const useDemoStore = create<DemoStore>((set) => {
           fetchAndCache(`${GITHUB_BASE}/mergesort-lesson.md`, "lessonContent"),
         ]);
 
-        const rawInstructions = String.raw`${instructions}`;
-        const rawLesson = String.raw`${lesson}`;
+        const rawInstructions = `${instructions}`;
+        const rawLesson = `${lesson}`;
 
         const systemMessage = constructSystemMessage(
           rawInstructions,

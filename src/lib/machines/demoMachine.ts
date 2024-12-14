@@ -292,7 +292,7 @@ export const demoMachine = setup({
               "previousResponses",
               JSON.stringify(storageData)
             );
-            console.log("Stored in localStorage:", storageData);
+            // console.log("Stored in localStorage:", storageData);
           }
         })
         .catch((error) => {

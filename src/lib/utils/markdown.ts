@@ -1,5 +1,6 @@
 import { micromark } from "micromark";
 import { math, mathHtml } from "micromark-extension-math";
+import { gfm, gfmHtml } from "micromark-extension-gfm";
 
 // Helper function to transform LaTeX delimiters
 function transformLatexDelimiters(content: string): string {
@@ -13,18 +14,16 @@ function transformLatexDelimiters(content: string): string {
 }
 
 export function parseMarkdown(content: string): string {
-  // Transform LaTeX delimiters first
   const transformedContent = transformLatexDelimiters(content);
-  // Then ensure content is treated as a raw string
-  const rawContent = String.raw`${transformedContent}`;
+  const rawContent = transformedContent;
 
   return micromark(rawContent, {
     extensions: [
-      math({
-        singleDollarTextMath: true,
-      }),
+      gfm(),
+      math({ singleDollarTextMath: true }),
     ],
     htmlExtensions: [
+      gfmHtml(),
       mathHtml({
         throwOnError: false,
         output: "mathml",
